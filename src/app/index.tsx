@@ -3,22 +3,13 @@ import { StyleSheet, View, Text, TouchableOpacity } from "react-native";
 
 export default function Index() {
   return (
-    <View style={styles.container}>
+    <View className="flex-1 items-center justify-center bg-slate-800">
       <Link href="/sign-up" asChild>
         <TouchableOpacity>
-          <Text>Cadastro</Text>
+          <Text className="text-white">Cadastro</Text>
         </TouchableOpacity>
       </Link>
-      <Text>Bem-vindo ao GIG</Text>
+      <Text className="text-white mt-4">Bem-vindo ao GIG</Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
