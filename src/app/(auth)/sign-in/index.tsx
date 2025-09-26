@@ -25,17 +25,11 @@ export default function SignIn() {
 
     setIsLoading(true);
     
-/* simulação de login---
+    //TEMPORÁRIO: simulação de login bem-sucedido
     setTimeout(() => {
       setIsLoading(false);
       router.replace('/(tabs)/home');
     }, 1000);
-*/
-
-  };
-
-  const handleForgotPassword = () => {
-    Alert.alert('Recuperar Senha', 'Funcionalidade em desenvolvimento');
   };
 
   return (
@@ -92,9 +86,13 @@ export default function SignIn() {
           </TouchableOpacity>
 
           {/* Forgot Password Link */}
-          <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotPassword}>
-            <Text style={styles.forgotPasswordText}>Esqueceu a senha?</Text>
-          </TouchableOpacity>
+          <View style={styles.forgotPassword}>
+            <Link href="/(auth)/forgot-password" asChild>
+              <TouchableOpacity>
+                <Text style={styles.forgotPasswordText}>Esqueceu a senha?</Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
 
           {/* Sign Up Link */}
           <View style={styles.signupContainer}>
