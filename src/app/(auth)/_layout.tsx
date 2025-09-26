@@ -10,6 +10,10 @@ export default function AuthLayout() {
     >
       <Stack.Screen name="sign-in/index" />
       <Stack.Screen name="sign-up/index" />
+      <Stack.Screen name="sign-up/band/index" />
+      <Stack.Screen name="sign-up/venue/index" />
+      <Stack.Screen name="forgot-password/index" />
+      <Stack.Screen name="reset-password/index" />
     </Stack>
   );
 }
