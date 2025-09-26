@@ -154,16 +154,6 @@ export default function VenueSignUp() {
                   ))}
                 </Picker>
               </View>
-
-              <TextInput
-                style={styles.input}
-                placeholder="CEP"
-                placeholderTextColor="#999"
-                value={formData.zipCode}
-                onChangeText={(value) => handleInputChange('zipCode', value)}
-                keyboardType="numeric"
-                maxLength={9}
-              />
             </View>
 
             {/* Terms and Conditions */}
