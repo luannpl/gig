@@ -2,29 +2,22 @@ import { View, Text, TextInput, Image, FlatList, StyleSheet } from "react-native
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 
-
+// ../ para subir um nível e para entrar na pasta nomePasta/
 const bands = [
   {
-    id: "1",
-    name: "Audioslave",
-    genre: "Grunge",
-    rating: 4.7,
-    // ../ para subir um nível nomePasta/ para entrar na pasta
-    image: require("../../assets/images/audioslave.jpg"),
+    id: "1", name: "Audioslave", genre: "Grunge", rating: 4.7, image: require("../../assets/images/audioslave.jpg"),
+},
+  {
+    id: "2", name: "Dua Lipa", genre: "Pop", rating: 4.8, image: require("../../assets/images/dualipa.jpg"),
   },
   {
-    id: "2",
-    name: "Dua Lipa",
-    genre: "Pop",
-    rating: 4.8,
-    image: require("../../assets/images/dualipa.jpg"),
+    id: "3", name: "Chitãozinho e Xororó", genre: "Sertanejo", rating: 4.5, image: require("../../assets/images/xororo.jpg"),
   },
   {
-    id: "3",
-    name: "Gusttavo Lima",
-    genre: "Sertanejo",
-    rating: 4.5,
-    image: require("../../assets/images/gustavo-lima.jpg"),
+    id: "4", name: "Gal costa", genre: "MPB", rating: 4.9, image: require("../../assets/images/gal-costa.jpg"),
+  },
+  {
+    id: "4", name: "Caetano Veloso", genre: "MPB", rating: 4.9, image: require("../../assets/images/caetano.jpg"),
   },
 ];
 
@@ -71,10 +64,12 @@ export default function Search( ) {
           <View className="bg-black rounded-xl mb-4 overflow-hidden">
             {/* 3. A propriedade 'source' agora usa a imagem diretamente */}
             <Image
-              source={item.image}
-              className="w-full h-40"
+               source={item.image}
+              style={{ width: "100%", height: 160 }}
               resizeMode="cover"
             />
+
+            
             <View className="p-3">
               <Text className="text-white font-semibold text-lg">
                 {item.name}
