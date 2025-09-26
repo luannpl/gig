@@ -12,24 +12,39 @@ import {
 } from 'react-native';
 import { Link, router } from 'expo-router';
 
-export default function SignIn() {
+export default function ForgotPassword() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Erro', 'Por favor, preencha todos os campos');
+  const handleResetPassword = async () => {
+    if (!email.trim()) {
+      Alert.alert('Erro', 'Por favor, digite seu email');
+      return;
+    }
+
+    //validação de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Erro', 'Por favor, digite um email válido');
       return;
     }
 
     setIsLoading(true);
     
-    //TEMPORÁRIO: simulação de login bem-sucedido
+    // simulação de requisição de redefinição de senha
     setTimeout(() => {
       setIsLoading(false);
-      router.replace('/(tabs)/home');
-    }, 1000);
+      Alert.alert(
+        'Email Enviado', 
+        'Se este email estiver cadastrado, você receberá instruções para redefinir sua senha.',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.push('/(auth)/reset-password')
+          }
+        ]
+      );
+    }, 1500);
   };
 
   return (
@@ -39,17 +54,22 @@ export default function SignIn() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.content}>
-          {/* Logo Container */}
+          {/* Logo */}
           <View style={styles.logoContainer}>
             <View style={styles.logoBox}>
               <Text style={styles.logoText}>gig</Text>
             </View>
           </View>
 
-          {/* Login Title */}
-          <Text style={styles.title}>login</Text>
+          {/* Title */}
+          <Text style={styles.title}>redefinir a senha</Text>
+          
+          {/* Subtitle */}
+          <Text style={styles.subtitle}>
+            Informe o email para qual deseja redefinir a senha
+          </Text>
 
-          {/* Input Fields */}
+          {/* Email Input */}
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
@@ -60,46 +80,26 @@ export default function SignIn() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Digite sua senha"
-              placeholderTextColor="#999"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoComplete="password"
+              autoFocus
             />
           </View>
 
-          {/* Login Button */}
+          {/* Reset Password Button */}
           <TouchableOpacity
-            style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
-            onPress={handleLogin}
+            style={[styles.resetButton, isLoading && styles.resetButtonDisabled]}
+            onPress={handleResetPassword}
             disabled={isLoading}
           >
-            <Text style={styles.loginButtonText}>
-              {isLoading ? 'Entrando...' : 'Entrar'}
+            <Text style={styles.resetButtonText}>
+              {isLoading ? 'Enviando...' : 'Redefinir senha'}
             </Text>
           </TouchableOpacity>
 
-          {/* Forgot Password Link */}
-          <View style={styles.forgotPassword}>
-            <Link href="/(auth)/forgot-password" asChild>
+          {/* Back to Login */}
+          <View style={styles.backContainer}>
+            <Link href="/(auth)/sign-in" asChild>
               <TouchableOpacity>
-                <Text style={styles.forgotPasswordText}>Esqueceu a senha?</Text>
-              </TouchableOpacity>
-            </Link>
-          </View>
-
-          {/* Sign Up Link */}
-          <View style={styles.signupContainer}>
-            <Text style={styles.signupText}>Não tem conta? </Text>
-            <Link href="/(auth)/sign-up" asChild>
-              <TouchableOpacity>
-                <Text style={styles.signupLink}>Cadastre-se</Text>
+                <Text style={styles.backLink}>Voltar ao login</Text>
               </TouchableOpacity>
             </Link>
           </View>
@@ -144,11 +144,18 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#000',
     textAlign: 'center',
+    marginBottom: 15,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
     marginBottom: 40,
+    lineHeight: 22,
   },
   inputContainer: {
     marginBottom: 30,
@@ -160,47 +167,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     fontSize: 16,
-    marginBottom: 15,
     backgroundColor: '#fafafa',
     color: '#000',
   },
-  loginButton: {
-    backgroundColor: '#2C2B2B',
+  resetButton: {
+    backgroundColor: '#4CAF50',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 30,
   },
-  loginButtonDisabled: {
-    backgroundColor: '#999',
+  resetButtonDisabled: {
+    backgroundColor: '#A5D6A7',
   },
-  loginButtonText: {
+  resetButtonText: {
     color: '#ffffff',
     fontSize: 18,
     fontWeight: '600',
   },
-  forgotPassword: {
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  forgotPasswordText: {
-    color: '#666',
-    fontSize: 16,
-    textDecorationLine: 'underline',
-  },
-  signupContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  backContainer: {
     alignItems: 'center',
   },
-  signupText: {
+  backLink: {
     color: '#666',
     fontSize: 16,
-  },
-  signupLink: {
-    color: '#007AFF',
-    fontSize: 16,
-    fontWeight: '600',
     textDecorationLine: 'underline',
   },
 });
