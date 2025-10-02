@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -10,82 +10,97 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-} from 'react-native';
-import { Link, router } from 'expo-router';
-import { Picker } from '@react-native-picker/picker';
+} from "react-native";
+import { Link, router } from "expo-router";
+import { Picker } from "@react-native-picker/picker";
+import { useMutation } from "@tanstack/react-query";
+import { BandSignUpData } from "@/src/types/auth";
+import { bandSignUp } from "@/src/services/auth";
 
 const genres = [
-  'Rock',
-  'Pop',
-  'Jazz',
-  'Blues',
-  'Sertanejo',
-  'Electrônica',
-  'Rap',
-  'Reggae',
-  'Samba',
-  'Axé',
-  'Clássica',
-  'Metal',
-  'Punk',
-  'Alternativo',
-  'Indie',
-  'Gospel',
-  'Funk',
-  'Outros'
+  "Rock",
+  "Pop",
+  "Jazz",
+  "Blues",
+  "Sertanejo",
+  "Electrônica",
+  "Rap",
+  "Reggae",
+  "Samba",
+  "Axé",
+  "Clássica",
+  "Metal",
+  "Punk",
+  "Alternativo",
+  "Indie",
+  "Gospel",
+  "Funk",
+  "Outros",
 ];
 
 export default function BandSignUp() {
-  const [formData, setFormData] = useState({
-    bandName: '',
-    genre: '',
-    city: '',
-    email: '',
-    password: '',
+  const [formData, setFormData] = useState<BandSignUpData>({
+    name: "",
+    genre: "",
+    city: "",
+    email: "",
+    password: "",
+    role: "band",
   });
-  const [isLoading, setIsLoading] = useState(false);
+
   const [agreeToTerms, setAgreeToTerms] = useState(false);
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
+  const { mutate: createBand, isPending } = useMutation({
+    mutationFn: bandSignUp,
+    onSuccess: () => {
+      Alert.alert("Sucesso", "Banda cadastrada com sucesso!");
+      router.push("/(auth)/sign-in");
+    },
+    onError: (error: any) => {
+      Alert.alert(
+        "Erro",
+        error?.response?.data?.message || "Falha ao cadastrar a banda"
+      );
+    },
+  });
+
+  const handleInputChange = (field: keyof BandSignUpData, value: string) => {
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
-  const handleSignUp = async () => {
-    if (!formData.bandName.trim() || !formData.genre || !formData.city.trim() || 
-        !formData.email.trim() || !formData.password.trim()) {
-      Alert.alert('Erro', 'Por favor, preencha todos os campos');
+  const handleSignUp = () => {
+    if (
+      !formData.name.trim() ||
+      !formData.genre ||
+      !formData.city.trim() ||
+      !formData.email.trim() ||
+      !formData.password.trim()
+    ) {
+      Alert.alert("Erro", "Por favor, preencha todos os campos");
       return;
     }
 
     if (!agreeToTerms) {
-      Alert.alert('Erro', 'Você deve concordar com os termos e condições');
+      Alert.alert("Erro", "Você deve concordar com os termos e condições");
       return;
     }
 
-    setIsLoading(true);
-    
-    // SIMULAÇÃO TEMPORÁRIA
-    setTimeout(() => {
-      setIsLoading(false);
-      Alert.alert('Sucesso', 'Conta da banda criada com sucesso!', [
-        {
-          text: 'OK',
-          onPress: () => router.replace('/(tabs)/home')
-        }
-      ]);
-    }, 1000);
+    createBand(formData);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.content}>
             {/* Logo */}
             <View style={styles.logoContainer}>
@@ -121,15 +136,15 @@ export default function BandSignUp() {
                 style={styles.input}
                 placeholder="Nome da Banda"
                 placeholderTextColor="#999"
-                value={formData.bandName}
-                onChangeText={(value) => handleInputChange('bandName', value)}
+                value={formData.name}
+                onChangeText={(value) => handleInputChange("name", value)}
                 autoCapitalize="words"
               />
 
               <View style={styles.pickerContainer}>
                 <Picker
                   selectedValue={formData.genre}
-                  onValueChange={(value) => handleInputChange('genre', value)}
+                  onValueChange={(value) => handleInputChange("genre", value)}
                   style={styles.picker}
                 >
                   <Picker.Item label="Selecione o gênero" value="" />
@@ -144,7 +159,7 @@ export default function BandSignUp() {
                 placeholder="Cidade/Estado"
                 placeholderTextColor="#999"
                 value={formData.city}
-                onChangeText={(value) => handleInputChange('city', value)}
+                onChangeText={(value) => handleInputChange("city", value)}
                 autoCapitalize="words"
               />
 
@@ -153,7 +168,7 @@ export default function BandSignUp() {
                 placeholder="Email"
                 placeholderTextColor="#999"
                 value={formData.email}
-                onChangeText={(value) => handleInputChange('email', value)}
+                onChangeText={(value) => handleInputChange("email", value)}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
@@ -164,7 +179,7 @@ export default function BandSignUp() {
                 placeholder="Senha"
                 placeholderTextColor="#999"
                 value={formData.password}
-                onChangeText={(value) => handleInputChange('password', value)}
+                onChangeText={(value) => handleInputChange("password", value)}
                 secureTextEntry
                 autoCapitalize="none"
                 autoComplete="password"
@@ -172,27 +187,35 @@ export default function BandSignUp() {
             </View>
 
             {/* Terms and Conditions */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.checkboxContainer}
               onPress={() => setAgreeToTerms(!agreeToTerms)}
             >
-              <View style={[styles.checkbox, agreeToTerms && styles.checkboxChecked]}>
+              <View
+                style={[
+                  styles.checkbox,
+                  agreeToTerms && styles.checkboxChecked,
+                ]}
+              >
                 {agreeToTerms && <Text style={styles.checkmark}>✓</Text>}
               </View>
               <Text style={styles.termsText}>
-                Li e concordo com os{' '}
+                Li e concordo com os{" "}
                 <Text style={styles.termsLink}>termos e condições</Text>.
               </Text>
             </TouchableOpacity>
 
             {/* Sign Up Button */}
             <TouchableOpacity
-              style={[styles.signUpButton, isLoading && styles.signUpButtonDisabled]}
+              style={[
+                styles.signUpButton,
+                isPending && styles.signUpButtonDisabled,
+              ]}
               onPress={handleSignUp}
-              disabled={isLoading}
+              disabled={isPending}
             >
               <Text style={styles.signUpButtonText}>
-                {isLoading ? 'Criando conta...' : 'Criar conta'}
+                {isPending ? "Criando conta..." : "Criar conta"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -205,7 +228,7 @@ export default function BandSignUp() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
   },
   keyboardView: {
     flex: 1,
@@ -219,128 +242,128 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   logoContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 30,
   },
   logoBox: {
     width: 120,
     height: 80,
     borderWidth: 2,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fafafa',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fafafa",
   },
   logoText: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000',
-    fontStyle: 'italic',
+    fontWeight: "bold",
+    color: "#000",
+    fontStyle: "italic",
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#000',
-    textAlign: 'center',
+    fontWeight: "bold",
+    color: "#000",
+    textAlign: "center",
     marginBottom: 20,
   },
   loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 10,
   },
   loginText: {
-    color: '#666',
+    color: "#666",
     fontSize: 16,
   },
   loginLink: {
-    color: '#007AFF',
+    color: "#007AFF",
     fontSize: 16,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
   switchContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 30,
   },
   switchLink: {
-    color: '#007AFF',
+    color: "#007AFF",
     fontSize: 16,
-    textDecorationLine: 'underline',
+    textDecorationLine: "underline",
   },
   formContainer: {
     marginBottom: 20,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
     borderRadius: 12,
     paddingHorizontal: 20,
     paddingVertical: 15,
     fontSize: 16,
     marginBottom: 15,
-    backgroundColor: '#fafafa',
-    color: '#000',
+    backgroundColor: "#fafafa",
+    color: "#000",
   },
   pickerContainer: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
     borderRadius: 12,
     marginBottom: 15,
-    backgroundColor: '#fafafa',
-    overflow: 'hidden',
+    backgroundColor: "#fafafa",
+    overflow: "hidden",
   },
   picker: {
     height: 50,
-    color: '#000',
+    color: "#000",
   },
   checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 30,
   },
   checkbox: {
     width: 20,
     height: 20,
     borderWidth: 2,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
     borderRadius: 4,
     marginRight: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   checkboxChecked: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: "#007AFF",
+    borderColor: "#007AFF",
   },
   checkmark: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   termsText: {
-    color: '#666',
+    color: "#666",
     fontSize: 14,
     flex: 1,
   },
   termsLink: {
-    color: '#007AFF',
-    textDecorationLine: 'underline',
+    color: "#007AFF",
+    textDecorationLine: "underline",
   },
   signUpButton: {
-    backgroundColor: '#2C2B2B',
+    backgroundColor: "#2C2B2B",
     borderRadius: 12,
     paddingVertical: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   signUpButtonDisabled: {
-    backgroundColor: '#999',
+    backgroundColor: "#999",
   },
   signUpButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
