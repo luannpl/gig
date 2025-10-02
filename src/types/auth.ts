@@ -30,3 +30,8 @@ export type CepResponse = {
   ddd: string;
   siafi: string;
 };
+
+export type LoginData = {
+  email: string;
+  password: string;
+};

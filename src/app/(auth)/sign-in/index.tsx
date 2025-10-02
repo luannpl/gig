@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,34 +9,43 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-} from 'react-native';
-import { Link, router } from 'expo-router';
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Link, router } from "expo-router";
+import { LoginData } from "@/src/types/auth";
+import { useMutation } from "@tanstack/react-query";
+import { authSignIn } from "@/src/services/auth";
 
 export default function SignIn() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const { mutate: login, isPending } = useMutation({
+    mutationFn: (data: LoginData) => authSignIn(data),
+    onSuccess: async (data) => {
+      await AsyncStorage.setItem("token", data.accessToken);
+      await AsyncStorage.setItem("user", JSON.stringify(data.user));
 
-  const handleLogin = async () => {
+      Alert.alert("Sucesso", "Login realizado com sucesso!");
+      router.replace("/(tabs)/home");
+    },
+    onError: (error: any) => {
+      Alert.alert("Erro", error?.response?.data?.message || "Falha no login");
+    },
+  });
+
+  const handleLogin = () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Erro', 'Por favor, preencha todos os campos');
+      Alert.alert("Erro", "Por favor, preencha todos os campos");
       return;
     }
-
-    setIsLoading(true);
-    
-    //TEMPORÁRIO: simulação de login bem-sucedido
-    setTimeout(() => {
-      setIsLoading(false);
-      router.replace('/(tabs)/home');
-    }, 1000);
+    login({ email, password });
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <View style={styles.content}>
           {/* Logo Container */}
@@ -76,12 +85,15 @@ export default function SignIn() {
 
           {/* Login Button */}
           <TouchableOpacity
-            style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
+            style={[
+              styles.loginButton,
+              isPending && styles.loginButtonDisabled,
+            ]}
             onPress={handleLogin}
-            disabled={isLoading}
+            disabled={isPending}
           >
             <Text style={styles.loginButtonText}>
-              {isLoading ? 'Entrando...' : 'Entrar'}
+              {isPending ? "Entrando..." : "Entrar"}
             </Text>
           </TouchableOpacity>
 
@@ -112,7 +124,7 @@ export default function SignIn() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
   },
   keyboardView: {
     flex: 1,
@@ -120,34 +132,34 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 30,
-    justifyContent: 'center',
+    justifyContent: "center",
     paddingTop: 50,
   },
   logoContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 60,
   },
   logoBox: {
     width: 120,
     height: 80,
     borderWidth: 2,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fafafa',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fafafa",
   },
   logoText: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000',
-    fontStyle: 'italic',
+    fontWeight: "bold",
+    color: "#000",
+    fontStyle: "italic",
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#000',
-    textAlign: 'center',
+    fontWeight: "bold",
+    color: "#000",
+    textAlign: "center",
     marginBottom: 40,
   },
   inputContainer: {
@@ -155,52 +167,52 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
     borderRadius: 12,
     paddingHorizontal: 20,
     paddingVertical: 15,
     fontSize: 16,
     marginBottom: 15,
-    backgroundColor: '#fafafa',
-    color: '#000',
+    backgroundColor: "#fafafa",
+    color: "#000",
   },
   loginButton: {
-    backgroundColor: '#2C2B2B',
+    backgroundColor: "#2C2B2B",
     borderRadius: 12,
     paddingVertical: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 20,
   },
   loginButtonDisabled: {
-    backgroundColor: '#999',
+    backgroundColor: "#999",
   },
   loginButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   forgotPassword: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 30,
   },
   forgotPasswordText: {
-    color: '#666',
+    color: "#666",
     fontSize: 16,
-    textDecorationLine: 'underline',
+    textDecorationLine: "underline",
   },
   signupContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
   },
   signupText: {
-    color: '#666',
+    color: "#666",
     fontSize: 16,
   },
   signupLink: {
-    color: '#007AFF',
+    color: "#007AFF",
     fontSize: 16,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
 });
