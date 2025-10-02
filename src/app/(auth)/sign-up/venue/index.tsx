@@ -72,7 +72,7 @@ export default function VenueSignUp() {
     onError: (error: any) => {
       Alert.alert(
         "Erro",
-        error?.response?.data?.message || "Falha ao cadastrar a banda"
+        error?.response?.data?.message || "Falha ao cadastrar o estabelecimento"
       );
     },
   });
