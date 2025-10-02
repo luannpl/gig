@@ -3,11 +3,10 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@/*": [
-        "./*"
-      ]
+      "@/*": ["./*"]
     }
   },
+  "esModuleInterop": true,
   "include": [
     "**/*.ts",
     "**/*.tsx",
