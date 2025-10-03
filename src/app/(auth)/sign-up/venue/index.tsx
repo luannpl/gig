@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import { Link, router } from "expo-router";
 import { Picker } from "@react-native-picker/picker";
-import { CepResponse } from "@/src/types/auth";
 import { venueSignUp } from "@/src/services/auth";
 import { useMutation } from "@tanstack/react-query";
 
@@ -38,7 +37,6 @@ export default function VenueSignUp() {
     email: "",
     password: "",
     category: "",
-    zipCode: "",
   });
   const [agreeToTerms, setAgreeToTerms] = useState(false);
 
@@ -47,20 +45,6 @@ export default function VenueSignUp() {
       ...prev,
       [field]: value,
     }));
-  };
-
-  const getDataByCep = async (cep: string) => {
-    try {
-      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      if (!response.ok) {
-        throw new Error("Erro ao buscar dados do CEP");
-      }
-      const data = (await response.json()) as CepResponse;
-      return data;
-    } catch (error) {
-      console.error(error);
-      return null;
-    }
   };
 
   const { mutate: createVenue, isPending } = useMutation({
@@ -82,8 +66,7 @@ export default function VenueSignUp() {
       !formData.venueName.trim() ||
       !formData.email.trim() ||
       !formData.password.trim() ||
-      !formData.category ||
-      !formData.zipCode.trim()
+      !formData.category
     ) {
       Alert.alert("Erro", "Por favor, preencha todos os campos");
       return;
@@ -94,29 +77,6 @@ export default function VenueSignUp() {
       return;
     }
 
-    try {
-      const data = await getDataByCep(formData.zipCode);
-      if (!data) {
-        console.error("Erro ao buscar dados do CEP");
-        return;
-      }
-
-      const body = {
-        name: formData.venueName,
-        cep: formData.zipCode,
-        city: data.localidade,
-        address: `${data.logradouro}, ${data.bairro}`,
-        type: formData.category,
-        email: formData.email,
-        password: formData.password,
-        role: "venue" as "venue",
-      };
-
-      createVenue(body);
-    } catch (error) {
-      console.error(error);
-      return;
-    }
   };
 
   return (
@@ -189,16 +149,6 @@ export default function VenueSignUp() {
                 secureTextEntry
                 autoCapitalize="none"
                 autoComplete="password"
-              />
-
-              <TextInput
-                style={styles.input}
-                placeholder="CEP"
-                placeholderTextColor="#999"
-                value={formData.zipCode}
-                onChangeText={(value) => handleInputChange("zipCode", value)}
-                autoCapitalize="none"
-                autoComplete="postal-code"
               />
 
               <View style={styles.pickerContainer}>

@@ -9,9 +9,6 @@ export type BandSignUpData = {
 
 export type VenueSignUpData = {
   name: string;
-  cep: string;
-  city: string;
-  address: string;
   type: string;
   email: string;
   password: string;
