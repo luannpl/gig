@@ -1,5 +1,5 @@
 // ProfileBand.tsx
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { Ionicons, Entypo, FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import api from "@/src/services/api";
 
 const { width } = Dimensions.get("window");
 
@@ -69,6 +70,14 @@ export default function ProfileBand() {
   const [activeIndex, setActiveIndex] = useState(0);
   const flatRef = useRef<FlatList<any> | null>(null);
 
+  useEffect(() => {
+    const teste = async () => {
+      const response = await api.get("users/me");
+      console.log("Usuário logado:", response.data);
+    };
+    teste();
+  }, []);
+
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) setActiveIndex(viewableItems[0].index ?? 0);
   }).current;
@@ -76,21 +85,36 @@ export default function ProfileBand() {
 
   // Render foto do carrossel — usa item corretamente
   const renderPhoto = ({ item }: { item: any }) => (
-    <Image source={getImageSource(item)} style={styles.photo} resizeMode="cover" />
+    <Image
+      source={getImageSource(item)}
+      style={styles.photo}
+      resizeMode="cover"
+    />
   );
 
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" />
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
         {/* CAPA */}
-        <Image source={getImageSource(banda.fotoCapa)} style={styles.cover} resizeMode="cover" />
+        <Image
+          source={getImageSource(banda.fotoCapa)}
+          style={styles.cover}
+          resizeMode="cover"
+        />
 
         {/* Header - perfil flutuante */}
         <View style={styles.header}>
           <View style={styles.avatarWrap}>
             <Image
-              source={banda.fotoPerfil ? getImageSource(banda.fotoPerfil) : { uri: "https://via.placeholder.com/140" }}
+              source={
+                banda.fotoPerfil
+                  ? getImageSource(banda.fotoPerfil)
+                  : { uri: "https://via.placeholder.com/140" }
+              }
               style={styles.avatar}
             />
           </View>
@@ -149,7 +173,13 @@ export default function ProfileBand() {
 
           <View style={styles.dots}>
             {(banda.fotos ?? []).map((_, i) => (
-              <View key={i} style={[styles.dot, activeIndex === i ? styles.dotActive : undefined]} />
+              <View
+                key={i}
+                style={[
+                  styles.dot,
+                  activeIndex === i ? styles.dotActive : undefined,
+                ]}
+              />
             ))}
           </View>
         </View>
@@ -165,11 +195,16 @@ export default function ProfileBand() {
         <View style={styles.card}>
           {banda.musicas?.map((m, index) => (
             <View style={styles.musicRow} key={index}>
-              <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
+              >
                 <Ionicons name="musical-note" size={18} />
                 <Text style={styles.musicTitle}>{m.nome}</Text>
               </View>
-              <TouchableOpacity style={styles.playBtn} onPress={() => console.log("Play:", m.url)}>
+              <TouchableOpacity
+                style={styles.playBtn}
+                onPress={() => console.log("Play:", m.url)}
+              >
                 <Text style={styles.playText}>Play</Text>
               </TouchableOpacity>
             </View>
@@ -205,20 +240,78 @@ const styles = StyleSheet.create({
   titleBlock: { marginTop: 10, alignItems: "center", width: "100%" },
   title: { fontSize: 20, fontWeight: "700", textAlign: "center" },
   subtitle: { fontSize: 13, color: "#666", marginTop: 6, marginBottom: 10 },
-  hireButton: { borderWidth: 1.2, borderColor: "#000", paddingVertical: 10, paddingHorizontal: 28, borderRadius: 8, marginTop: 6, backgroundColor: "#fff" },
+  hireButton: {
+    borderWidth: 1.2,
+    borderColor: "#000",
+    paddingVertical: 10,
+    paddingHorizontal: 28,
+    borderRadius: 8,
+    marginTop: 6,
+    backgroundColor: "#fff",
+  },
   hireText: { color: "#000", fontWeight: "700" },
-  infoRow: { flexDirection: "row", justifyContent: "space-between", marginHorizontal: 15, marginTop: 18 },
-  infoCard: { flex: 1, backgroundColor: "#fff", marginHorizontal: 6, paddingVertical: 12, paddingHorizontal: 8, borderRadius: 10, alignItems: "center", borderWidth: 1, borderColor: "#eee" },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginHorizontal: 15,
+    marginTop: 18,
+  },
+  infoCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    marginHorizontal: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
   infoText: { marginTop: 6, fontSize: 13, color: "#333" },
-  sectionTitle: { fontSize: 16, fontWeight: "700", marginTop: 18, marginBottom: 10, marginLeft: 15 },
-  photo: { width: width - 60, height: 180, borderRadius: 12, marginRight: 12, backgroundColor: "#eee" },
-  dots: { flexDirection: "row", justifyContent: "center", marginTop: 8, marginBottom: 6 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#ddd", marginHorizontal: 4 },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 18,
+    marginBottom: 10,
+    marginLeft: 15,
+  },
+  photo: {
+    width: width - 60,
+    height: 180,
+    borderRadius: 12,
+    marginRight: 12,
+    backgroundColor: "#eee",
+  },
+  dots: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#ddd",
+    marginHorizontal: 4,
+  },
   dotActive: { backgroundColor: "#333", width: 18, borderRadius: 9 },
-  card: { marginHorizontal: 15, backgroundColor: "#f8f8f8", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#eee" },
+  card: {
+    marginHorizontal: 15,
+    backgroundColor: "#f8f8f8",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
   description: { fontSize: 14, color: "#333", lineHeight: 20 },
   musicRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
   musicTitle: { marginLeft: 10, fontSize: 15 },
-  playBtn: { backgroundColor: "#000", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
+  playBtn: {
+    backgroundColor: "#000",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
   playText: { color: "#fff", fontWeight: "700" },
 });
