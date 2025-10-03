@@ -15,44 +15,106 @@ import {
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 
-// Tipando o array de dados com o tipo que criamos
-const pendingContracts: Contract[] = [
-  {
-    id: "1",
-    title: "Aniversário da Unifor",
-    status: "Pendente",
-    type: "Aniversário",
-    dateTime: "05/09/2025 - 19:00:00 - 21:30:00",
-    location:
-      "Floresta Bar - Rua Tenente João Albano, Aerolândia, Fortaleza - CEP 60850710",
-    price: "R$ 2.000,00",
-  },
-  {
-    id: "2",
-    title: "Aniversário da Unifor",
-    status: "Pendente",
-    type: "Aniversário",
-    dateTime: "05/09/2025 - 19:00:00 - 21:30:00",
-    location:
-      "Floresta Bar - Rua Tenente João Albano, Aerolândia, Fortaleza - CEP 60850710",
-    price: "R$ 2.000,00",
-  },
-];
+type Profile = {
+  id: string;
+  band: {
+    id: number;
+  } | null;
+  venue: {
+    id: string;
+  } | null;
+};
 
-// Definindo o tipo para as abas
 type ActiveTab = "Pendentes" | "Aceitos" | "Recusados";
 
 const AdminContractScreen: React.FC = () => {
-  const bandId = 1;
   const [activeTab, setActiveTab] = useState<ActiveTab>("Pendentes");
-  const { data: contracts } = useQuery<Contract[]>({
-    queryKey: ["contracts", bandId],
+
+  const { data: me, isLoading: isLoadingProfile } = useQuery<Profile>({
+    queryKey: ["me"],
     queryFn: async () => {
-      const { data } = await api.get<Contract[]>(`/contract/band/${bandId}`);
+      const { data } = await api.get("/users/me");
       return data;
     },
   });
+
+  // Determinar o ID e o tipo baseado no perfil do usuário
+  const getUserInfo = () => {
+    if (!me) return null;
+
+    if (me.band) {
+      return {
+        id: me.band.id,
+        type: "band",
+        endpoint: `/contract/band/${me.band.id}`,
+      };
+    } else if (me.venue) {
+      return {
+        id: me.venue.id,
+        type: "venue",
+        endpoint: `/contract/venue/${me.venue.id}`,
+      };
+    }
+
+    return null;
+  };
+
+  const userInfo = getUserInfo();
+
+  const { data: contracts, isLoading: isLoadingContracts } = useQuery<
+    Contract[]
+  >({
+    queryKey: ["contracts", userInfo?.id, userInfo?.type],
+    queryFn: async () => {
+      if (!userInfo) throw new Error("Usuário não encontrado");
+      const { data } = await api.get<Contract[]>(userInfo.endpoint);
+      return data;
+    },
+    enabled: !!userInfo, // Só executa a query se o userInfo existir
+  });
+
   console.log(contracts);
+
+  // Função para filtrar contratos baseado na aba ativa
+  const getFilteredContracts = () => {
+    if (!contracts) return [];
+
+    switch (activeTab) {
+      case "Pendentes":
+        return contracts.filter((contract) => contract.isConfirmed === null);
+      case "Aceitos":
+        return contracts.filter((contract) => contract.isConfirmed === true);
+      case "Recusados":
+        return contracts.filter((contract) => contract.isConfirmed === false);
+      default:
+        return contracts;
+    }
+  };
+
+  if (isLoadingProfile || isLoadingContracts) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <Text style={styles.loadingText}>Carregando...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (!me || !userInfo) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <Text style={styles.errorText}>Usuário não encontrado.</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (!contracts) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <Text style={styles.errorText}>Nenhum contrato encontrado.</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#f2f2f2" />
@@ -108,10 +170,21 @@ const AdminContractScreen: React.FC = () => {
 
       {/* Lista de Contratos */}
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
-        {activeTab === "Pendentes" &&
-          pendingContracts.map((contract) => (
-            <ContractCard key={contract.id} contract={contract} />
-          ))}
+        {getFilteredContracts().map((contract) => (
+          <ContractCard
+            key={contract.id}
+            contract={contract}
+            profileId={userInfo.id}
+            userType={userInfo.type}
+          />
+        ))}
+        {getFilteredContracts().length === 0 && (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>
+              Nenhum contrato {activeTab.toLowerCase()} encontrado.
+            </Text>
+          </View>
+        )}
       </ScrollView>
 
       {/* Barra de Navegação Inferior */}
@@ -178,6 +251,29 @@ const styles = StyleSheet.create({
   },
   scrollViewContent: {
     paddingBottom: 20,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+  },
+  loadingText: {
+    fontSize: 18,
+    color: "#333",
+    textAlign: "center",
+    marginTop: 50,
+  },
+  errorText: {
+    fontSize: 16,
+    color: "#dc3545",
+    textAlign: "center",
+    marginTop: 50,
   },
   bottomNav: {
     flexDirection: "row",
