@@ -187,23 +187,31 @@ export default function BandSignUp() {
             </View>
 
             {/* Terms and Conditions */}
-            <TouchableOpacity
-              style={styles.checkboxContainer}
-              onPress={() => setAgreeToTerms(!agreeToTerms)}
-            >
-              <View
-                style={[
-                  styles.checkbox,
-                  agreeToTerms && styles.checkboxChecked,
-                ]}
+            <View style={styles.checkboxContainer}>
+              <TouchableOpacity
+                onPress={() => setAgreeToTerms(!agreeToTerms)}
+                style={styles.checkboxTouchable}
               >
-                {agreeToTerms && <Text style={styles.checkmark}>✓</Text>}
+                <View
+                  style={[
+                    styles.checkbox,
+                    agreeToTerms && styles.checkboxChecked,
+                  ]}
+                >
+                  {agreeToTerms && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+              </TouchableOpacity>
+
+              <View style={styles.termsTextContainer}>
+                <Text style={styles.termsText}>Li e concordo com os </Text>
+                <Link href="/(auth)/terms-and-conditions" asChild>
+                  <TouchableOpacity>
+                    <Text style={styles.termsLink}>termos e condições</Text>
+                  </TouchableOpacity>
+                </Link>
+                <Text style={styles.termsText}>.</Text>
               </View>
-              <Text style={styles.termsText}>
-                Li e concordo com os{" "}
-                <Text style={styles.termsLink}>termos e condições</Text>.
-              </Text>
-            </TouchableOpacity>
+            </View>
 
             {/* Sign Up Button */}
             <TouchableOpacity
@@ -320,37 +328,45 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   checkboxContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     marginBottom: 30,
+  },
+  checkboxTouchable: {
+    marginRight: 12,
   },
   checkbox: {
     width: 20,
     height: 20,
     borderWidth: 2,
-    borderColor: "#e0e0e0",
+    borderColor: '#e0e0e0',
     borderRadius: 4,
-    marginRight: 12,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   checkboxChecked: {
-    backgroundColor: "#007AFF",
-    borderColor: "#007AFF",
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
   },
   checkmark: {
-    color: "#ffffff",
+    color: '#ffffff',
     fontSize: 12,
-    fontWeight: "bold",
+    fontWeight: 'bold',
+  },
+  termsTextContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
   },
   termsText: {
-    color: "#666",
+    color: '#666',
     fontSize: 14,
-    flex: 1,
   },
   termsLink: {
-    color: "#007AFF",
-    textDecorationLine: "underline",
+    color: '#007AFF',
+    textDecorationLine: 'underline',
+    fontSize: 14,
   },
   signUpButton: {
     backgroundColor: "#2C2B2B",
