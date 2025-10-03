@@ -14,6 +14,7 @@ export default function AuthLayout() {
       <Stack.Screen name="sign-up/venue/index" />
       <Stack.Screen name="forgot-password/index" />
       <Stack.Screen name="reset-password/index" />
+      <Stack.Screen name="terms-and-conditions/index" />
     </Stack>
   );
 }
