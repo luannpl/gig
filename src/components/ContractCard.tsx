@@ -86,7 +86,9 @@ const ContractCard: React.FC<ContractCardProps> = ({
         </Text>
       </View>
 
-      <Text style={styles.price}>{contract.budget}</Text>
+      <Text style={styles.price}>
+        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(contract.budget)}
+      </Text>
 
       <View style={styles.buttonsContainer}>
         {shouldShowAcceptButton() && (
