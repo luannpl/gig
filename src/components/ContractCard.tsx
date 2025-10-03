@@ -1,44 +1,119 @@
 // src/components/ContractCard.tsx
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { Contract } from "../types/contracts";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import api from "../services/api";
 
 // Definindo o tipo das props que o componente recebe
 interface ContractCardProps {
   contract: Contract;
+  profileId: string | number;
+  userType: string;
 }
 
-const ContractCard: React.FC<ContractCardProps> = ({ contract }) => {
+const ContractCard: React.FC<ContractCardProps> = ({
+  contract,
+  profileId,
+  userType,
+}) => {
+  const queryClient = useQueryClient();
+
+  // Função para determinar quais botões mostrar baseado no userType e status do contrato
+  const shouldShowAcceptButton = () => {
+    // Venues não podem aceitar contratos
+    if (userType === "venue") return false;
+
+    // Bandas podem aceitar se não estiver confirmado
+    return contract.isConfirmed !== true;
+  };
+
+  const shouldShowCancelButton = () => {
+    // Venues podem cancelar se foi aceito ou está pendente
+    if (userType === "venue") {
+      return contract.isConfirmed === true || contract.isConfirmed === null;
+    }
+
+    // Bandas podem cancelar/recusar se não foi recusado
+    return contract.isConfirmed !== false;
+  };
+
+  const { mutate: confirmContract } = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.patch<Contract>(
+        `/contract/confirm/${contract.id}`
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["contracts", profileId, userType],
+      });
+    },
+    onError: (error) => {
+      Alert.alert(error.message);
+    },
+  });
+
+  const { mutate: cancelContract } = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.patch<Contract>(
+        `/contract/cancel/${contract.id}`
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["contracts", profileId, userType],
+      });
+    },
+    onError: (error) => {
+      Alert.alert(error.message);
+    },
+  });
+
   return (
     <View style={styles.cardContainer}>
       <View style={styles.header}>
-        <Text style={styles.title}>{contract.title}</Text>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{contract.status}</Text>
-        </View>
+        <Text style={styles.title}>{contract.eventName}</Text>
       </View>
 
       <View style={styles.detailsContainer}>
-        <Text style={styles.detailText}>{contract.type}</Text>
-        <Text style={styles.detailText}>{contract.dateTime}</Text>
-        <Text style={styles.detailText}>{contract.location}</Text>
+        <Text style={styles.detailText}>{contract.eventType}</Text>
+        <Text style={styles.detailText}>{contract.eventDate}</Text>
+        <Text style={styles.detailText}>
+          {contract.startTime} - {contract.endTime}
+        </Text>
       </View>
 
-      <Text style={styles.price}>{contract.price}</Text>
+      <Text style={styles.price}>
+        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(contract.budget)}
+      </Text>
 
       <View style={styles.buttonsContainer}>
-        <TouchableOpacity style={styles.acceptButton}>
-          <Text style={styles.buttonText}>Aceitar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.rejectButton}>
-          <Text style={styles.buttonText}>Recusar</Text>
-        </TouchableOpacity>
+        {shouldShowAcceptButton() && (
+          <TouchableOpacity
+            style={styles.acceptButton}
+            onPress={() => confirmContract()}
+          >
+            <Text style={styles.buttonText}>Aceitar</Text>
+          </TouchableOpacity>
+        )}
+        {shouldShowCancelButton() && (
+          <TouchableOpacity
+            style={styles.rejectButton}
+            onPress={() => cancelContract()}
+          >
+            <Text style={styles.buttonText}>
+              {userType === "venue" ? "Cancelar" : "Recusar"}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
 };
 
-// Os estilos permanecem os mesmos...
 const styles = StyleSheet.create({
   cardContainer: {
     backgroundColor: "#FFFFFF",
@@ -66,7 +141,6 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   badge: {
-    backgroundColor: "#DFFF00",
     borderRadius: 12,
     paddingVertical: 4,
     paddingHorizontal: 12,
@@ -74,7 +148,6 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 12,
     fontWeight: "bold",
-    color: "#000",
   },
   detailsContainer: {
     marginBottom: 12,
