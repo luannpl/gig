@@ -17,14 +17,16 @@ const bands = [
     id: "4", name: "Gal costa", genre: "MPB", rating: 4.9, image: require("../../assets/images/gal-costa.jpg"),
   },
   {
-    id: "4", name: "Caetano Veloso", genre: "MPB", rating: 4.9, image: require("../../assets/images/caetano.jpg"),
+    id: "5", name: "Caetano Veloso", genre: "MPB", rating: 4.9, image: require("../../assets/images/caetano.jpg"),
   },
 ];
 
 export default function Search( ) {
   const [search, setSearch] = useState("");
 
-
+ const a = () => {
+  const data = fetch('/bands').then(res => res.json());
+ }
   
 
   return (
