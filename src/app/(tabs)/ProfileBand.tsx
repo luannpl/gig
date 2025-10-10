@@ -157,7 +157,7 @@ export default function ProfileBand() {
         <Text style={styles.sectionTitle}>Fotos</Text>
         <View style={{ paddingLeft: 15 }}>
           <FlatList
-            ref={(r) => (flatRef.current = r)}
+            ref={flatRef}
             data={banda.fotos ?? []}
             horizontal
             showsHorizontalScrollIndicator={false}
