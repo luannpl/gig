@@ -1,4 +1,4 @@
-import { getPosts } from "@/src/services/posts";
+import { getPosts, createPost } from "@/src/services/posts";
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -13,24 +13,66 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator, // Adicionado para indicar carregamento
 } from "react-native";
+import axios from "axios"; // Importar axios para tipagem e checagem de erros
 
-// A simple time-ago function
-const timeAgo = (dateString) => {
+// --- Definição de Tipos (Interfaces) ---
+
+interface User {
+  name: string;
+  id: string; // Tornando 'id' obrigatório após autenticação
+  avatar?: string;
+  band?: {
+    profilePicture?: string;
+  };
+}
+
+interface Post {
+  id: string;
+  content: string;
+  likes: any[];
+  commentsCount: number;
+  createdAt: string;
+  user: User;
+  imageUrl?: string;
+}
+
+interface CommentsModalProps {
+  showComments: boolean;
+  onClose: () => void;
+  selectedPost: Post | undefined;
+  newComment: string;
+  setNewComment: React.Dispatch<React.SetStateAction<string>>;
+  handleAddComment: () => void;
+}
+
+interface Comment {
+  id: number;
+  author: string;
+  text: string;
+  timeAgo: string;
+}
+
+// --- Funções Auxiliares ---
+
+const timeAgo = (dateString: string): string => {
   const date = new Date(dateString);
   const now = new Date();
-  const seconds = Math.round((now - date) / 1000);
+  const seconds = Math.round((now.getTime() - date.getTime()) / 1000);
   const minutes = Math.round(seconds / 60);
   const hours = Math.round(minutes / 60);
   const days = Math.round(hours / 24);
 
-  if (seconds < 60) return `${seconds}s ago`;
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  return `${days}d ago`;
+  if (seconds < 60) return `${seconds}s atrás`;
+  if (minutes < 60) return `${minutes}m atrás`;
+  if (hours < 24) return `${hours}h atrás`;
+  return `${days}d atrás`;
 };
 
-const CommentsModal = ({
+// --- Componente Modal de Comentários (inalterado, mas tipado) ---
+
+const CommentsModal: React.FC<CommentsModalProps> = ({
   showComments,
   onClose,
   selectedPost,
@@ -63,10 +105,7 @@ const CommentsModal = ({
           </View>
         )}
 
-        <FlatList
-          // The API provides commentsCount, not a comment list on the post object.
-          // This would need a separate API endpoint to fetch comments for a post.
-          // For now, we pass an empty array to prevent crashes.
+        <FlatList<Comment>
           data={[]}
           keyExtractor={(item) => item.id.toString()}
           className="flex-1 px-4"
@@ -105,24 +144,50 @@ const CommentsModal = ({
   </Modal>
 );
 
-const HomeScreen = () => {
-  const [newPostText, setNewPostText] = useState("");
-  const [showComments, setShowComments] = useState(false);
-  const [selectedPostId, setSelectedPostId] = useState(null);
-  const [newComment, setNewComment] = useState("");
-  const [posts, setPosts] = useState([]);
+// --- Componente Principal Atualizado ---
+
+const HomeScreen: React.FC = () => {
+  const [newPostText, setNewPostText] = useState<string>("");
+  const [showComments, setShowComments] = useState<boolean>(false);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [newComment, setNewComment] = useState<string>("");
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [isPosting, setIsPosting] = useState<boolean>(false);
+
+  // *** NOVA LÓGICA DE ESTADO DO USUÁRIO ***
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState<boolean>(true);
+
 
   useEffect(() => {
+    // Simula a busca de dados do usuário logado (o que um contexto de Auth faria)
+    const fetchCurrentUser = () => {
+      // Simula o tempo de latência de uma chamada de API
+      setTimeout(() => {
+        // Dados reais fornecidos pelo usuário:
+        setCurrentUser({
+          id: "bd812d7d-e451-4bdc-9679-4fcb4b0fc161",
+          name: "teste123",
+          // O avatar original é null, mas usamos um placeholder para evitar quebras visuais
+          avatar: "https://placehold.co/150x150/500099/ffffff?text=T",
+        });
+        setIsLoadingUser(false);
+      }, 500);
+    };
+
+    fetchCurrentUser();
+
+    // Antiga lógica de buscar posts (mantida)
     const fetchPosts = async () => {
       try {
-        const data = await getPosts();
-        console.log("Fetched posts:", data.posts);
+        const data: { posts: Post[] } = await getPosts();
         if (Array.isArray(data.posts)) {
           setPosts(data.posts);
         } else {
           setPosts([]);
         }
       } catch (error) {
+        console.error("Erro ao carregar posts:", error);
         Alert.alert(
           "Erro ao buscar posts",
           "Não foi possível carregar os posts."
@@ -131,43 +196,105 @@ const HomeScreen = () => {
     };
 
     fetchPosts();
-  }, []);
+  }, []); // Executa apenas na montagem do componente
 
-  const handleCreatePost = () => {
-    // This is a client-side only creation, it won't persist.
-    // This should be replaced with an API call.
-    if (newPostText.trim()) {
-      const newPost = {
-        id: `new-${posts.length + 1}`,
-        content: newPostText,
-        likes: [],
-        commentsCount: 0,
-        createdAt: new Date().toISOString(),
-        user: { name: "Você (local)" },
+  const handleCreatePost = async (): Promise<void> => {
+    if (newPostText.trim() === "") {
+      Alert.alert("Erro", "Por favor, escreva algo para publicar.");
+      return;
+    }
+
+    if (!currentUser || !currentUser.id) {
+      Alert.alert("Erro", "Usuário não autenticado ou ID ausente. Não é possível publicar.");
+      return;
+    }
+
+    setIsPosting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("content", newPostText);
+      formData.append("authorId", currentUser.id);
+
+      // DEBUG: Verificar o que está no FormData
+      console.log('=== DEBUG FORM DATA ===');
+      console.log('content:', newPostText);
+      console.log('authorId:', currentUser.id); // Mudamos o nome aqui para refletir o FormData
+
+      // CORREÇÃO APLICADA AQUI: Usa formData.entries() para inspecionar os valores
+      for (let [key, value] of formData.entries()) {
+        console.log(`FormData[${key}]:`, value);
+      }
+
+      const response = await createPost(formData);
+
+      const newPost: Post = {
+        ...response.data,
+        user: {
+          ...currentUser,
+          name: currentUser.name
+        },
       };
+
       setPosts([newPost, ...posts]);
       setNewPostText("");
-    } else {
-      Alert.alert("Erro", "Por favor, escreva algo para publicar");
+      Alert.alert("Sucesso", "Postagem criada com sucesso!");
+
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        console.error("Erro do Backend:", error.response.data);
+        const errorMessage = error.response.data.message || 'Erro de rede desconhecido.';
+
+        Alert.alert(
+          "Erro de Publicação",
+          `Erro: ${errorMessage}`
+        );
+      } else {
+        console.error("Erro ao criar post:", error);
+        Alert.alert("Erro de Publicação", "Não foi possível criar a publicação.");
+      }
+    } finally {
+      setIsPosting(false);
     }
   };
 
-  const handleLike = (postId) => {
-    // TODO: Implement like functionality with an API call.
+  const handleLike = (postId: string): void => {
     console.log(`Liking post ${postId} is not implemented.`);
   };
 
-  const handleOpenComments = (postId) => {
+  const handleOpenComments = (postId: string): void => {
     setSelectedPostId(postId);
     setShowComments(true);
   };
 
-  const handleAddComment = () => {
-    // TODO: Implement add comment functionality with an API call.
+  const handleAddComment = (): void => {
     console.log(`Adding comment to post ${selectedPostId} is not implemented.`);
   };
 
-  const selectedPost = posts.find((post) => post.id === selectedPostId);
+  const selectedPost: Post | undefined = posts.find(
+    (post) => post.id === selectedPostId
+  );
+
+  // Exibe um indicador de carregamento enquanto o usuário não é carregado
+  if (isLoadingUser) {
+    return (
+      <View className="flex-1 justify-center items-center bg-gray-100">
+        <ActivityIndicator size="large" color="#4F46E5" />
+        <Text className="mt-4 text-gray-600">Carregando usuário...</Text>
+      </View>
+    );
+  }
+
+  // Tratamento caso o usuário não consiga ser carregado (simulação de deslogado)
+  if (!currentUser) {
+    return (
+      <View className="flex-1 justify-center items-center bg-gray-100 p-8">
+        <Text className="text-xl font-bold text-red-500 mb-4">Erro de Autenticação</Text>
+        <Text className="text-center text-gray-700">Não foi possível carregar os dados do usuário. Por favor, tente novamente ou faça login.</Text>
+      </View>
+    );
+  }
+
 
   return (
     <SafeAreaView className="flex-1 bg-gray-100">
@@ -178,27 +305,32 @@ const HomeScreen = () => {
 
       <View className="bg-white mx-4 my-4 rounded-xl p-5 shadow-md">
         <TextInput
-          placeholder="Criar publicação"
+          // Usa o nome real do estado
+          placeholder={`O que você está pensando, ${currentUser.name}?`}
           placeholderTextColor="#999"
           multiline
           value={newPostText}
           onChangeText={setNewPostText}
           textAlignVertical="top"
           className="h-20"
+          editable={!isPosting}
         />
         <View className="flex-row justify-end gap-2.5 mt-2">
           <TouchableOpacity
-            className="bg-blue-500 py-2 px-5 rounded-full"
+            className={`py-2 px-5 rounded-full ${isPosting ? 'bg-gray-400' : 'bg-blue-500'}`}
             onPress={handleCreatePost}
+            disabled={isPosting || newPostText.trim() === ""}
           >
-            <Text className="text-white text-sm font-semibold">Publicar</Text>
+            <Text className="text-white text-sm font-semibold">
+              {isPosting ? "Publicando..." : "Publicar"}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Posts List */}
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {posts.map((post) => (
+        {posts.map((post: Post) => (
           <View
             key={post.id}
             className="bg-white mx-4 mb-4 rounded-xl p-5 shadow-md"

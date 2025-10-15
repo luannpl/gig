@@ -8,3 +8,16 @@ export async function getPosts() {
     throw error;
   }
 }
+
+export async function createPost(formData: FormData) {
+  try {
+    const response = await api.post("/posts", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}
