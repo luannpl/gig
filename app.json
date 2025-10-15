@@ -37,9 +37,7 @@
     "extra": {
       "router": {
         "root": "src/app"
-      },
-      "apiUrl": "http://localhost:8081",
-      "env": "development"
+      }
     }
   }
 }
