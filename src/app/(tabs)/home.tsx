@@ -216,11 +216,6 @@ const HomeScreen: React.FC = () => {
       formData.append("content", newPostText);
       formData.append("authorId", currentUser.id);
 
-      // DEBUG: Verificar o que está no FormData
-      console.log('=== DEBUG FORM DATA ===');
-      console.log('content:', newPostText);
-      console.log('authorId:', currentUser.id); // Mudamos o nome aqui para refletir o FormData
-
       // CORREÇÃO APLICADA AQUI: Usa formData.entries() para inspecionar os valores
       for (let [key, value] of formData.entries()) {
         console.log(`FormData[${key}]:`, value);
