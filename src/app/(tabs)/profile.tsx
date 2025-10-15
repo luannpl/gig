@@ -1,6 +1,16 @@
-import React, { useState } from 'react';
-import { ScrollView, View, Text, Button, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import React, { JSX, useState } from 'react';
+import { 
+  ScrollView, 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  Dimensions, 
+  NativeSyntheticEvent, 
+  NativeScrollEvent 
+} from 'react-native';
 import { Image } from 'expo-image';
+// Importamos o ReactNode do React para tipar o 'icon'
+import { ReactNode } from 'react';
 import { ArrowLeft, MapPin, Users, Music, ExternalLink } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
@@ -9,10 +19,53 @@ const ITEM_WIDTH = width - 32;
 const ITEM_MARGIN_RIGHT = 12;
 const ITEM_FULL_WIDTH = ITEM_WIDTH + ITEM_MARGIN_RIGHT;
 
+// ===================================
+// TIPAGEM DOS DADOS (INTERFACES)
+// ===================================
+
+/**
+ * Interface para um item de foto no carrossel.
+ */
+interface Photo {
+  uri: string;
+}
+
+/**
+ * Interface para um evento.
+ */
+interface Event {
+  name: string;
+  action: string;
+}
+
+/**
+ * Interface para um item de rede social.
+ */
+interface Social {
+  name: string;
+  action: string;
+  icon: ReactNode; // O ícone é um componente React, então usamos ReactNode
+}
+
+/**
+ * Interface principal para todos os dados do perfil do estabelecimento.
+ */
+interface ProfileData {
+  headerImage: string;
+  name: string;
+  category: string;
+  followers: string;
+  location: string;
+  photos: Photo[];
+  description: string;
+  events: Event[];
+  socials: Social[];
+}
 
 
 // --- DADOS DO ESTABELECIMENTO (Mock) ---
-const profileData = {
+// Tipamos o objeto diretamente com a interface ProfileData
+const profileData: ProfileData = {
   headerImage: "https://images.unsplash.com/photo-1549462525-58e1c31c9470?q=80&w=3570&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
   name: "Hard Rock Café",
   category: "Restaurante / casa de show",
@@ -30,17 +83,24 @@ const profileData = {
     { name: "Kyuss", action: "Comprar" },
   ],
   socials: [
+    // Definimos o tipo dos ícones como ReactNode na interface
     { name: "Instagram", action: "Acessar", icon: <ExternalLink size={18} color="#4B5563" /> },
     { name: "Facebook", action: "Acessar", icon: <ExternalLink size={18} color="#4B5563" /> },
   ],
 };
 
-export default function Profile() {
-  // Estado para rastrear o índice da foto ativa
-  const [activeIndex, setActiveIndex] = useState(0);
+// ===================================
+// COMPONENTE PRINCIPAL
+// ===================================
+
+// Definimos o componente como uma função de componente React padrão
+export default function Profile(): JSX.Element {
+  // Estado para rastrear o índice da foto ativa, tipado como number
+  const [activeIndex, setActiveIndex] = useState<number>(0);
 
   // Função para atualizar o estado no evento de rolagem
-  const handleScroll = (event) => {
+  // Tipamos o evento como NativeSyntheticEvent<NativeScrollEvent>
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>): void => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
     // Calcula o índice arredondando o deslocamento pela largura completa do item
     // O ITEM_FULL_WIDTH é usado para garantir o encaixe correto
@@ -54,11 +114,20 @@ export default function Profile() {
   return (
     <View className="flex-1 bg-white">
       {/* 1. IMAGEM DO HEADER E SETA DE VOLTAR */}
+      {/* O componente Image da expo-image aceita `source` tipado para URI */}
       <Image
         source={{ uri: profileData.headerImage }}
         className="w-full h-48 bg-gray-200"
         contentFit="cover"
       />
+      {/* Adicionar um botão de Voltar aqui, embora não estivesse no código original, é boa prática */}
+      <TouchableOpacity 
+        className="absolute top-10 left-4 p-2 bg-white/70 rounded-full" 
+        onPress={() => console.log('Voltar')}
+      >
+        <ArrowLeft size={24} color="#000" />
+      </TouchableOpacity>
+
       {/* 2. CONTEÚDO SCROLLÁVEL */}
       <ScrollView className="flex-1 -mt-6 bg-white rounded-t-xl">
         <View className="p-4 space-y-6">
@@ -76,9 +145,8 @@ export default function Profile() {
           {/* BOTÕES DE INFORMAÇÃO E AÇÃO */}
           <View className="flex-row justify-around p-4 border border-gray-200 rounded-lg">
             {/* Seguidores */}
-            {/* Ícone e Texto em Coluna (Padrão do React Native) */}
             <View className="items-center space-y-1">
-              <Users size={20} color="#4B5563" /> {/* Aumentei o ícone levemente */}
+              <Users size={20} color="#4B5563" />
               <Text className="text-sm text-gray-700 font-bold">
                 {profileData.followers}
               </Text>
@@ -87,11 +155,10 @@ export default function Profile() {
               </Text>
             </View>
 
-            {/* Separador Vertical (Opcional, se não quiser que a borda divida) */}
+            {/* Separador Vertical */}
             <View className="w-px h-10 bg-gray-200" />
 
             {/* Localização */}
-            {/* Ícone e Texto em Coluna */}
             <View className="items-center space-y-1">
               <MapPin size={20} color="#4B5563" />
               <Text className="text-sm text-gray-700 font-bold">
@@ -114,15 +181,15 @@ export default function Profile() {
               snapToInterval={ITEM_FULL_WIDTH} // Largura da imagem + margem
               decelerationRate="fast"
               snapToAlignment="start"
-              onScroll={handleScroll} // Adicionado o handler de scroll
+              onScroll={handleScroll} // Handler de scroll tipado
               scrollEventThrottle={16}
             >
-              {profileData.photos.map((photo, index) => (
+              {/* Tipamos 'photo' como Photo e 'index' como number */}
+              {profileData.photos.map((photo: Photo, index: number) => (
                 <Image
                   key={index}
                   source={{ uri: photo.uri }}
                   className="h-48 rounded-lg bg-gray-200"
-                  // Usamos o estilo manual com as constantes
                   style={{ width: ITEM_WIDTH, height: 180, marginRight: ITEM_MARGIN_RIGHT }}
                   contentFit="cover"
                 />
@@ -131,12 +198,12 @@ export default function Profile() {
 
             {/* INDICADORES DE PAGINAÇÃO (BOLINHAS) */}
             <View className="flex-row justify-center space-x-2">
-              {profileData.photos.map((_, index) => (
+              {profileData.photos.map((_, index: number) => (
                 <View
                   key={index}
-                  // Estilo condicional para o indicador ativo
-                  className={`w-2 h-2 rounded-full transition-all duration-300 ${index === activeIndex ? 'bg-gray-800 w-3' : 'bg-gray-300'
-                    }`}
+                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                    index === activeIndex ? 'bg-gray-800 w-3' : 'bg-gray-300'
+                  }`}
                 />
               ))}
             </View>
@@ -153,7 +220,8 @@ export default function Profile() {
           {/* 5. NOSSOS EVENTOS */}
           <View className="space-y-3 pt-4 border border-gray-200 rounded-lg p-4">
             <Text className="text-xl font-bold text-gray-900">Nossos eventos</Text>
-            {profileData.events.map((event, index) => (
+            {/* Tipamos 'event' como Event e 'index' como number */}
+            {profileData.events.map((event: Event, index: number) => (
               <View key={index} className="flex-row justify-between items-center py-2">
                 <View className="flex-row items-center space-x-2">
                   <Music size={20} color="#4B5563" />
@@ -175,7 +243,8 @@ export default function Profile() {
           {/* 6. REDES SOCIAIS */}
           <View className="space-y-3 pt-4 border border-gray-200 rounded-lg p-4">
             <Text className="text-xl font-bold text-gray-900">Redes Sociais</Text>
-            {profileData.socials.map((social, index) => (
+            {/* Tipamos 'social' como Social e 'index' como number */}
+            {profileData.socials.map((social: Social, index: number) => (
               <View key={index} className="flex-row justify-between items-center py-2">
                 <View className="flex-row items-center space-x-2">
                   {social.icon}
@@ -185,10 +254,8 @@ export default function Profile() {
                 {/* BOTÃO 'ACESSAR' CUSTOMIZADO COM TAILWIND/NATIVEWIND */}
                 <TouchableOpacity
                   onPress={() => console.log(`Ação: ${social.action} ${social.name}`)}
-                  // Estilo: background branco, borda preta, arredondado e padding
                   className="px-4 py-2 border border-black bg-white rounded-lg shadow-sm"
                 >
-                  {/* Texto: cor preta */}
                   <Text className="text-black font-semibold text-sm">
                     {social.action}
                   </Text>
