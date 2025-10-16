@@ -141,7 +141,7 @@ export default function ProfileBand() {
               <TouchableOpacity
                 style={[styles.hireButton, { backgroundColor: "#000" }]}
                 activeOpacity={0.8}
-                onPress={() => router.push("/(tabs)/editBandProfile")}
+                onPress={() => router.push("/editBandProfile")}
               >
                 <Text style={[styles.hireText, { color: "#fff" }]}>
                   Editar perfil
