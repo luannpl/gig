@@ -26,6 +26,7 @@ type Band = {
   cidade: string;
   integrantes: number;
   descricao: string;
+  userId?: string;
   fotoCapa?: any;
   fotoPerfil?: any;
   fotos?: any[];
@@ -42,6 +43,7 @@ export default function ProfileBand() {
     genero: "Rock Alternativo",
     cidade: "Fortaleza, CE",
     integrantes: 5,
+    userId: "0e2d0646-ecf9-4f86-8ec3-1340430a6efa",
     descricao:
       "O Cidadão Instigado é uma banda brasileira de rock, criada em 1996, em Fortaleza",
     // se esses arquivos existirem, OK. Caso contrário troque por URLs ou adicione os arquivos na pasta correta
@@ -69,18 +71,31 @@ export default function ProfileBand() {
   // Carousel state
   const [activeIndex, setActiveIndex] = useState(0);
   const flatRef = useRef<FlatList<any> | null>(null);
+  const [user, setUser] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const teste = async () => {
-      const response = await api.get("users/me");
+    const carregarUser = async () => {
+      try {
+        const response = await api.get("/users/me");
+        setUser(response.data);
+      } catch (error) {
+        console.log("Erro ao buscar usuário:", error);
+      } finally {
+        setLoading(false);
+      }
     };
-    teste();
+    carregarUser();
   }, []);
 
-  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
-    if (viewableItems.length > 0) setActiveIndex(viewableItems[0].index ?? 0);
-  }).current;
-  const viewConfigRef = useRef({ viewAreaCoveragePercentThreshold: 50 });
+  if (loading) return <Text>Carregando...</Text>;
+
+  const isOwner = user?.id === banda.userId;
+
+  //   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+  //     if (viewableItems.length > 0) setActiveIndex(viewableItems[0].index ?? 0);
+  //   }).current;
+  //   const viewConfigRef = useRef({ viewAreaCoveragePercentThreshold: 50 });
 
   // Render foto do carrossel — usa item corretamente
   const renderPhoto = ({ item }: { item: any }) => (
@@ -122,13 +137,25 @@ export default function ProfileBand() {
             <Text style={styles.title}>{banda.nome}</Text>
             <Text style={styles.subtitle}>{banda.genero}</Text>
 
-            <TouchableOpacity
-              style={styles.hireButton}
-              activeOpacity={0.8}
-              onPress={() => console.log("Contratar", banda.id)}
-            >
-              <Text style={styles.hireText}>Contratar</Text>
-            </TouchableOpacity>
+            {isOwner ? (
+              <TouchableOpacity
+                style={[styles.hireButton, { backgroundColor: "#000" }]}
+                activeOpacity={0.8}
+                onPress={() => router.push("/editBandProfile")}
+              >
+                <Text style={[styles.hireText, { color: "#fff" }]}>
+                  Editar perfil
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.hireButton}
+                activeOpacity={0.8}
+                onPress={() => console.log("Contratar", banda.id)}
+              >
+                <Text style={styles.hireText}>Contratar</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -165,8 +192,8 @@ export default function ProfileBand() {
             pagingEnabled
             snapToAlignment="center"
             decelerationRate="fast"
-            onViewableItemsChanged={onViewableItemsChanged}
-            viewabilityConfig={viewConfigRef.current}
+            // onViewableItemsChanged={onViewableItemsChanged}
+            // viewabilityConfig={viewConfigRef.current}
             contentContainerStyle={{ paddingRight: 15 }}
           />
 
