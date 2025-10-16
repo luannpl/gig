@@ -73,7 +73,6 @@ export default function ProfileBand() {
   useEffect(() => {
     const teste = async () => {
       const response = await api.get("users/me");
-      console.log("Usuário logado:", response.data);
     };
     teste();
   }, []);

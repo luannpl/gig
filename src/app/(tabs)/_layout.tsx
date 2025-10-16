@@ -2,6 +2,7 @@ import { router, Tabs } from "expo-router";
 import { FontAwesome } from "@expo/vector-icons";
 import { useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getMe } from "@/src/services/auth";
 
 export default function TabsLayout() {
   useEffect(() => {
@@ -9,6 +10,12 @@ export default function TabsLayout() {
       const token = await AsyncStorage.getItem("token");
       if (!token) {
         router.replace("/(auth)/sign-in");
+        return;
+      }
+      const user = await getMe(token);
+      if (!user) {
+        router.replace("/(auth)/sign-in");
+        return;
       }
     };
 

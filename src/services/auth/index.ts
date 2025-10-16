@@ -27,3 +27,16 @@ export async function authSignIn(data: LoginData) {
     throw error;
   }
 }
+
+export async function getMe(token: string) {
+  try {
+    const response = await api.get("/users/me", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}
