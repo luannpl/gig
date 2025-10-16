@@ -32,7 +32,10 @@ export default function EditBandProfile() {
           const parsed = JSON.parse(storedBand);
           setBandId(parsed.id);
         } else {
-          Alert.alert("Erro", "ID da banda não encontrado. Faça login novamente.");
+          Alert.alert(
+            "Erro",
+            "ID da banda não encontrado. Faça login novamente."
+          );
         }
       } catch (error) {
         console.log("Erro ao obter ID:", error);
@@ -91,7 +94,10 @@ export default function EditBandProfile() {
   const removePhoto = (uri: string) => {
     Alert.alert("Remover Foto", "Deseja remover esta imagem?", [
       { text: "Cancelar", style: "cancel" },
-      { text: "Remover", onPress: () => setBandPhotos((prev) => prev.filter((p) => p !== uri)) },
+      {
+        text: "Remover",
+        onPress: () => setBandPhotos((prev) => prev.filter((p) => p !== uri)),
+      },
     ]);
   };
 
