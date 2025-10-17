@@ -15,6 +15,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../services/api";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { getMe } from "../services/auth";
 
 const { width } = Dimensions.get("window");
 
@@ -29,29 +30,41 @@ export default function EditBandProfile() {
   const [bandPhotos, setBandPhotos] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    async function getBandId() {
-      try {
-        const storedBand = await AsyncStorage.getItem("@bandData");
-        if (storedBand) {
-          const parsed = JSON.parse(storedBand);
-          setBandId(parsed.id);
-        } else {
-          Alert.alert(
-            "Erro",
-            "ID da banda não encontrado. Faça login novamente."
-          );
-        }
-      } catch (error) {
-        console.log("Erro ao obter ID:", error);
-      }
-    }
-    getBandId();
-  }, []);
+  // useEffect(() => {
+  //   async function getBandId() {
+  //     try {
+  //       const token = await AsyncStorage.getItem("token");
+  //       if (!token) {
+  //         Alert.alert("Erro", "Token não encontrado. Faça login novamente.");
+  //         AsyncStorage.removeItem("user");
+  //         AsyncStorage.removeItem("token");
+  //         router.replace("/(auth)/sign-in");
+  //         return;
+  //       }
+  //       const storedBand = await getMe(token);
+  //       if (storedBand) {
+  //         const parsed = JSON.parse(storedBand);
+  //         setBandId(parsed.band.id);
+  //       } else {
+  //         Alert.alert(
+  //           "Erro",
+  //           "ID da banda não encontrado. Faça login novamente."
+  //         );
+  //       }
+  //     } catch (error) {
+  //       console.log("Erro ao obter ID:", error);
+  //     }
+  //   }
+  //   getBandId();
+  // }, []);
 
   useEffect(() => {
     async function fetchBand() {
+      const user = await getMe((await AsyncStorage.getItem("token")) || "");
+      const bandId = user.band?.id;
+      setBandId(bandId || null);
       if (!bandId) return;
+      console.log("Buscando dados da banda com ID:", bandId);
       try {
         const response = await api.get(`/bands/${bandId}`);
         const data = response.data;
@@ -67,7 +80,7 @@ export default function EditBandProfile() {
       }
     }
     fetchBand();
-  }, [bandId]);
+  }, []);
 
   const pickImage = async (type: "cover" | "profile" | "gallery") => {
     const result = await ImagePicker.launchImageLibraryAsync({

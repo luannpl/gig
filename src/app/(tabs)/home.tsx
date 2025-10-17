@@ -1,6 +1,6 @@
 import { getPosts, createPost } from "@/src/services/posts";
 import { getMe } from "@/src/services/auth";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -18,6 +18,7 @@ import {
   ActivityIndicator, // Adicionado para indicar carregamento
 } from "react-native";
 import axios from "axios"; // Importar axios para tipagem e checagem de erros
+import { router } from "expo-router";
 
 // --- Definição de Tipos (Interfaces) ---
 
@@ -159,13 +160,12 @@ const HomeScreen: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState<boolean>(true);
 
-
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
         setIsLoadingUser(true);
 
-        const token = await AsyncStorage.getItem('token');
+        const token = await AsyncStorage.getItem("token");
 
         if (!token) {
           console.log("2. Token não encontrado. Forçando deslogado.");
@@ -173,20 +173,17 @@ const HomeScreen: React.FC = () => {
           return;
         }
 
-
         try {
           const userData = await getMe(token);
 
           setCurrentUser(userData as User);
-
         } catch (apiError) {
           console.error("3. FALHA NA CHAMADA GETME:", apiError);
           throw apiError;
         }
-
       } catch (error) {
         console.error("4. ERRO FATAL AO CARREGAR USUÁRIO:", error);
-        await AsyncStorage.removeItem('@MyApp:token');
+        await AsyncStorage.removeItem("token");
         setCurrentUser(null);
       } finally {
         setIsLoadingUser(false);
@@ -213,7 +210,6 @@ const HomeScreen: React.FC = () => {
 
     fetchCurrentUser();
     fetchPosts();
-
   }, []); // Executa apenas na montagem do componente
 
   const handleCreatePost = async (): Promise<void> => {
@@ -223,7 +219,10 @@ const HomeScreen: React.FC = () => {
     }
 
     if (!currentUser || !currentUser.id) {
-      Alert.alert("Erro", "Usuário não autenticado ou ID ausente. Não é possível publicar.");
+      Alert.alert(
+        "Erro",
+        "Usuário não autenticado ou ID ausente. Não é possível publicar."
+      );
       return;
     }
 
@@ -256,7 +255,7 @@ const HomeScreen: React.FC = () => {
         // 4. Adiciona o usuário logado (que é o autor do post).
         user: {
           ...currentUser,
-          name: currentUser.name
+          name: currentUser.name,
         },
       };
 
@@ -268,15 +267,16 @@ const HomeScreen: React.FC = () => {
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
         console.error("Erro do Backend:", error.response.data);
-        const errorMessage = error.response.data.message || 'Erro de rede desconhecido.';
+        const errorMessage =
+          error.response.data.message || "Erro de rede desconhecido.";
 
-        Alert.alert(
-          "Erro de Publicação",
-          `Erro: ${errorMessage}`
-        );
+        Alert.alert("Erro de Publicação", `Erro: ${errorMessage}`);
       } else {
         console.error("Erro ao criar post:", error);
-        Alert.alert("Erro de Publicação", "Não foi possível criar a publicação.");
+        Alert.alert(
+          "Erro de Publicação",
+          "Não foi possível criar a publicação."
+        );
       }
     } finally {
       setIsPosting(false);
@@ -312,14 +312,11 @@ const HomeScreen: React.FC = () => {
 
   // Tratamento caso o usuário não consiga ser carregado (simulação de deslogado)
   if (!currentUser) {
-    return (
-      <View className="flex-1 justify-center items-center bg-gray-100 p-8">
-        <Text className="text-xl font-bold text-red-500 mb-4">Erro de Autenticação</Text>
-        <Text className="text-center text-gray-700">Não foi possível carregar os dados do usuário. Por favor, tente novamente ou faça login.</Text>
-      </View>
-    );
+    AsyncStorage.removeItem("token");
+    AsyncStorage.removeItem("user");
+    router.replace("/(auth)/sign-in");
+    return null; // Ou uma tela de carregamento/erro apropriada
   }
-
 
   return (
     <SafeAreaView className="flex-1 bg-gray-100">
@@ -342,7 +339,7 @@ const HomeScreen: React.FC = () => {
         />
         <View className="flex-row justify-end gap-2.5 mt-2">
           <TouchableOpacity
-            className={`py-2 px-5 rounded-full ${isPosting ? 'bg-gray-400' : 'bg-blue-500'}`}
+            className={`py-2 px-5 rounded-full ${isPosting ? "bg-gray-400" : "bg-blue-500"}`}
             onPress={handleCreatePost}
             disabled={isPosting || newPostText.trim() === ""}
           >
