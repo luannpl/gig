@@ -15,6 +15,7 @@ import {
 import { Ionicons, Entypo, FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import api from "@/src/services/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width } = Dimensions.get("window");
 
@@ -72,23 +73,24 @@ export default function ProfileBand() {
   const [activeIndex, setActiveIndex] = useState(0);
   const flatRef = useRef<FlatList<any> | null>(null);
   const [user, setUser] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
+  // const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const carregarUser = async () => {
-      try {
-        const response = await api.get("/users/me");
-        setUser(response.data);
-      } catch (error) {
-        console.log("Erro ao buscar usuário:", error);
-      } finally {
-        setLoading(false);
+      const userData = await AsyncStorage.getItem("user");
+      if (userData) {
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
+        return;
       }
+      router.replace("/(auth)/sign-in");
+      AsyncStorage.removeItem("token");
+      AsyncStorage.removeItem("user");
     };
     carregarUser();
   }, []);
 
-  if (loading) return <Text>Carregando...</Text>;
+  // if (loading) return <Text>Carregando...</Text>;
 
   const isOwner = user?.id === banda.userId;
 
