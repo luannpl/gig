@@ -21,6 +21,7 @@ import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { router } from "expo-router";
 
 // --- Definição de Tipos (Interfaces) ---
 
@@ -235,7 +236,7 @@ const HomeScreen: React.FC = () => {
         }
       } catch (error) {
         console.error("4. ERRO FATAL AO CARREGAR USUÁRIO:", error);
-        await AsyncStorage.removeItem("@MyApp:token");
+        await AsyncStorage.removeItem("token");
         setCurrentUser(null);
       } finally {
         setIsLoadingUser(false);
@@ -322,7 +323,10 @@ const HomeScreen: React.FC = () => {
 
     // 2. Validação do usuário
     if (!currentUser || !currentUser.id) {
-      Alert.alert("Erro", "Usuário não autenticado. Não é possível publicar.");
+      Alert.alert(
+        "Erro",
+        "Usuário não autenticado ou ID ausente. Não é possível publicar."
+      );
       return;
     }
 
@@ -382,8 +386,19 @@ const HomeScreen: React.FC = () => {
       console.log("🚀 Enviando post para a API...");
       createPostMutation.mutate(formData);
     } catch (error) {
-      console.error("❌ Erro ao preparar post:", error);
-      Alert.alert("Erro", "Não foi possível preparar a publicação.");
+      if (axios.isAxiosError(error) && error.response) {
+        console.error("Erro do Backend:", error.response.data);
+        const errorMessage =
+          error.response.data.message || "Erro de rede desconhecido.";
+
+        Alert.alert("Erro de Publicação", `Erro: ${errorMessage}`);
+      } else {
+        console.error("Erro ao criar post:", error);
+        Alert.alert(
+          "Erro de Publicação",
+          "Não foi possível criar a publicação."
+        );
+      }
     }
   };
 
