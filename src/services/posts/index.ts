@@ -15,6 +15,7 @@ export async function createPost(formData: FormData) {
       headers: {
         "Content-Type": "multipart/form-data",
       },
+      transformRequest: (data) => data, // Importante: não transformar o FormData
     });
     return response.data;
   } catch (error) {
