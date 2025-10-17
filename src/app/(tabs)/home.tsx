@@ -15,15 +15,16 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator, // Adicionado para indicar carregamento
+  ActivityIndicator,
 } from "react-native";
-import axios from "axios"; // Importar axios para tipagem e checagem de erros
+import axios from "axios";
+import api from "@/src/services/api";
 
 // --- Definição de Tipos (Interfaces) ---
 
 interface User {
   name: string;
-  id: string; // Tornando 'id' obrigatório após autenticação
+  id: string;
   avatar?: string;
   band?: {
     profilePicture?: string;
@@ -38,6 +39,7 @@ interface Post {
   createdAt: string;
   user: User;
   imageUrl?: string;
+  likesCount: number;
 }
 
 interface CommentsModalProps {
@@ -72,7 +74,7 @@ const timeAgo = (dateString: string): string => {
   return `${days}d atrás`;
 };
 
-// --- Componente Modal de Comentários (inalterado, mas tipado) ---
+// --- Componente Modal de Comentários ---
 
 const CommentsModal: React.FC<CommentsModalProps> = ({
   showComments,
@@ -146,7 +148,7 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
   </Modal>
 );
 
-// --- Componente Principal Atualizado ---
+// --- Componente Principal ---
 
 const HomeScreen: React.FC = () => {
   const [newPostText, setNewPostText] = useState<string>("");
@@ -155,45 +157,40 @@ const HomeScreen: React.FC = () => {
   const [newComment, setNewComment] = useState<string>("");
   const [posts, setPosts] = useState<Post[]>([]);
   const [isPosting, setIsPosting] = useState<boolean>(false);
-
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState<boolean>(true);
-
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [likingPosts, setLikingPosts] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
         setIsLoadingUser(true);
-
         const token = await AsyncStorage.getItem('token');
 
         if (!token) {
-          console.log("2. Token não encontrado. Forçando deslogado.");
+          console.log("Token não encontrado. Forçando deslogado.");
           setCurrentUser(null);
           return;
         }
 
-
         try {
           const userData = await getMe(token);
-
           setCurrentUser(userData as User);
 
         } catch (apiError) {
-          console.error("3. FALHA NA CHAMADA GETME:", apiError);
+          console.error("FALHA NA CHAMADA GETME:", apiError);
           throw apiError;
         }
-
       } catch (error) {
-        console.error("4. ERRO FATAL AO CARREGAR USUÁRIO:", error);
-        await AsyncStorage.removeItem('@MyApp:token');
+        console.error("ERRO FATAL AO CARREGAR USUÁRIO:", error);
+        await AsyncStorage.removeItem('token');
         setCurrentUser(null);
       } finally {
         setIsLoadingUser(false);
       }
     };
 
-    // --- Lógica de buscar posts (Mantida) ---
     const fetchPosts = async () => {
       try {
         const data: { posts: Post[] } = await getPosts();
@@ -213,8 +210,7 @@ const HomeScreen: React.FC = () => {
 
     fetchCurrentUser();
     fetchPosts();
-
-  }, []); // Executa apenas na montagem do componente
+  }, []);
 
   const handleCreatePost = async (): Promise<void> => {
     if (newPostText.trim() === "") {
@@ -235,45 +231,26 @@ const HomeScreen: React.FC = () => {
       formData.append("authorId", currentUser.id);
 
       const response = await createPost(formData);
-
-      // 🚨 DEBUG: Veja o que o backend retorna.
-      console.log("Resposta da API de Criação de Post:", response.data);
-
       const postDataFromResponse = response.data || {};
 
       const newPost: Post = {
-        // 1. Desestrutura o que veio do backend (id, likes, etc.).
-        // Assume que 'id' e 'likes' vieram corretamente.
         ...postDataFromResponse,
-
-        // 2. GARANTE O CONTEÚDO: Usa o texto digitado, caso o backend o omita.
         content: postDataFromResponse.content || newPostText,
-
-        // 3. GARANTE O TIMESTAMP: Usa a hora atual se o backend não retornar.
-        // É crucial para o timeAgo().
         createdAt: postDataFromResponse.createdAt || new Date().toISOString(),
-
-        // 4. Adiciona o usuário logado (que é o autor do post).
         user: {
           ...currentUser,
           name: currentUser.name
         },
       };
 
-      // 5. ATUALIZAÇÃO DE ESTADO
       setPosts([newPost, ...posts]);
       setNewPostText("");
-
       Alert.alert("Sucesso", "Postagem criada com sucesso!");
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
         console.error("Erro do Backend:", error.response.data);
         const errorMessage = error.response.data.message || 'Erro de rede desconhecido.';
-
-        Alert.alert(
-          "Erro de Publicação",
-          `Erro: ${errorMessage}`
-        );
+        Alert.alert("Erro de Publicação", `Erro: ${errorMessage}`);
       } else {
         console.error("Erro ao criar post:", error);
         Alert.alert("Erro de Publicação", "Não foi possível criar a publicação.");
@@ -283,8 +260,100 @@ const HomeScreen: React.FC = () => {
     }
   };
 
-  const handleLike = (postId: string): void => {
-    console.log(`Liking post ${postId} is not implemented.`);
+  const handleLike = async (postId: string): Promise<void> => {
+    if (!currentUser?.id) {
+      Alert.alert("Erro", "Você precisa estar logado para curtir posts.");
+      return;
+    }
+
+    // Previne múltiplos cliques no mesmo post
+    if (likingPosts.has(postId)) return;
+
+    const isCurrentlyLiked = likedPosts.has(postId);
+    
+    // Atualização otimista da UI
+    setLikedPosts(prev => {
+      const newSet = new Set(prev);
+      if (isCurrentlyLiked) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
+
+    // Atualiza a contagem de likes no post
+    setPosts(prevPosts =>
+      prevPosts.map(post =>
+        post.id === postId
+          ? {
+              ...post,
+              likesCount: isCurrentlyLiked
+                ? Math.max(0, post.likesCount - 1)
+                : post.likesCount + 1
+            }
+          : post
+      )
+    );
+
+    // Marca post como sendo processado
+    setLikingPosts(prev => new Set(prev).add(postId));
+
+    try {
+      // Pega o token para autenticação
+      const token = await AsyncStorage.getItem('token');
+      
+      if (isCurrentlyLiked) {
+        // Unlike - usa o endpoint correto com token
+        await api.delete(`/likes/${postId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      } else {
+        // Like - usa o endpoint correto com token
+        await api.post(`/likes/${postId}`, {}, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao curtir/descurtir post:", error);
+      
+      // Reverte a mudança otimista em caso de erro
+      setLikedPosts(prev => {
+        const newSet = new Set(prev);
+        if (isCurrentlyLiked) {
+          newSet.add(postId);
+        } else {
+          newSet.delete(postId);
+        }
+        return newSet;
+      });
+
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.id === postId
+            ? {
+                ...post,
+                likesCount: isCurrentlyLiked
+                  ? post.likesCount + 1
+                  : Math.max(0, post.likesCount - 1)
+              }
+            : post
+        )
+      );
+
+      Alert.alert("Erro", "Não foi possível curtir/descurtir o post. Tente novamente.");
+    } finally {
+      // Remove post da lista de processamento
+      setLikingPosts(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(postId);
+        return newSet;
+      });
+    }
   };
 
   const handleOpenComments = (postId: string): void => {
@@ -300,7 +369,6 @@ const HomeScreen: React.FC = () => {
     (post) => post.id === selectedPostId
   );
 
-  // Exibe um indicador de carregamento enquanto o usuário não é carregado
   if (isLoadingUser) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-100">
@@ -310,7 +378,6 @@ const HomeScreen: React.FC = () => {
     );
   }
 
-  // Tratamento caso o usuário não consiga ser carregado (simulação de deslogado)
   if (!currentUser) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-100 p-8">
@@ -319,7 +386,6 @@ const HomeScreen: React.FC = () => {
       </View>
     );
   }
-
 
   return (
     <SafeAreaView className="flex-1 bg-gray-100">
@@ -330,7 +396,6 @@ const HomeScreen: React.FC = () => {
 
       <View className="bg-white mx-4 my-4 rounded-xl p-5 shadow-md">
         <TextInput
-          // Usa o nome real do estado
           placeholder={`O que você está pensando, ${currentUser.name}?`}
           placeholderTextColor="#999"
           multiline
@@ -355,67 +420,81 @@ const HomeScreen: React.FC = () => {
 
       {/* Posts List */}
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {posts.map((post: Post) => (
-          <View
-            key={post.id}
-            className="bg-white mx-4 mb-4 rounded-xl p-5 shadow-md"
-          >
-            <View className="flex-row items-center mb-4">
-              <Image
-                source={{
-                  uri:
-                    post.user.avatar ||
-                    post.user.band?.profilePicture ||
-                    `https://i.pravatar.cc/150?u=${post.user.id}`,
-                }}
-                className="w-10 h-10 rounded-full mr-2.5 bg-gray-200"
-              />
-              <View className="flex-col">
-                <Text className="text-base font-bold text-black mb-0.5">
-                  {post.user.name}
-                </Text>
-                <Text className="text-sm text-gray-500">
-                  {timeAgo(post.createdAt)}
-                </Text>
+        {posts.map((post: Post) => {
+          const isLiked = likedPosts.has(post.id);
+          const isLiking = likingPosts.has(post.id);
+
+          return (
+            <View
+              key={post.id}
+              className="bg-white mx-4 mb-4 rounded-xl p-5 shadow-md"
+            >
+              <View className="flex-row items-center mb-4">
+                <Image
+                  source={{
+                    uri:
+                      post.user.avatar ||
+                      post.user.band?.profilePicture ||
+                      `https://i.pravatar.cc/150?u=${post.user.id}`,
+                  }}
+                  className="w-10 h-10 rounded-full mr-2.5 bg-gray-200"
+                />
+                <View className="flex-col">
+                  <Text className="text-base font-bold text-black mb-0.5">
+                    {post.user.name}
+                  </Text>
+                  <Text className="text-sm text-gray-500">
+                    {timeAgo(post.createdAt)}
+                  </Text>
+                </View>
+              </View>
+              <Text className="text-base text-black mb-5 leading-snug">
+                {post.content}
+              </Text>
+              {post.imageUrl && (
+                <Image
+                  source={{ uri: post.imageUrl }}
+                  className="w-full h-64 rounded-lg mb-4 bg-gray-200"
+                  resizeMode="cover"
+                />
+              )}
+              <View className="flex-row justify-between">
+                <TouchableOpacity
+                  className="flex-row items-center flex-1"
+                  onPress={() => handleLike(post.id)}
+                  disabled={isLiking}
+                >
+                  <View className="mr-2">
+                    <Text 
+                      className="text-base"
+                      style={{ 
+                        color: isLiked ? '#EF4444' : '#9CA3AF',
+                        opacity: isLiking ? 0.5 : 1 
+                      }}
+                    >
+                      {isLiked ? "♥" : "♡"}
+                    </Text>
+                  </View>
+                  <Text className="text-sm text-gray-500">
+                    {post.likesCount || 0} curtida{post.likesCount !== 1 ? 's' : ''}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  className="flex-row items-center flex-1"
+                  onPress={() => handleOpenComments(post.id)}
+                >
+                  <View className="mr-2">
+                    <Text className="mb-1 leading-5">💬</Text>
+                  </View>
+                  <Text className="text-sm text-gray-500">
+                    {post.commentsCount || 0} comentário{post.commentsCount !== 1 ? 's' : ''}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
-            <Text className="text-base text-black mb-5 leading-snug">
-              {post.content}
-            </Text>
-            {post.imageUrl && (
-              <Image
-                source={{ uri: post.imageUrl }}
-                className="w-full h-64 rounded-lg mb-4 bg-gray-200"
-                resizeMode="cover"
-              />
-            )}
-            <View className="flex-row justify-between">
-              <TouchableOpacity
-                className="flex-row items-center flex-1"
-                onPress={() => handleLike(post.id)}
-              >
-                <View className="mr-2">
-                  <Text className="text-base text-gray-400">{"♡"}</Text>
-                </View>
-                <Text className="text-sm text-gray-500">
-                  {post.likes?.length || 0} curtidas
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className="flex-row items-center flex-1"
-                onPress={() => handleOpenComments(post.id)}
-              >
-                <View className="mr-2">
-                  <Text className="mb-1 leading-5">💬</Text>
-                </View>
-                <Text className="text-sm text-gray-500">
-                  {post.commentsCount || 0} comentários
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))}
+          );
+        })}
       </ScrollView>
 
       <CommentsModal
