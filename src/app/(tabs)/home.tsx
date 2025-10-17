@@ -1,4 +1,6 @@
 import { getPosts, createPost } from "@/src/services/posts";
+import { getMe } from "@/src/services/auth";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -154,30 +156,44 @@ const HomeScreen: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isPosting, setIsPosting] = useState<boolean>(false);
 
-  // *** NOVA LÓGICA DE ESTADO DO USUÁRIO ***
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState<boolean>(true);
 
 
   useEffect(() => {
-    // Simula a busca de dados do usuário logado (o que um contexto de Auth faria)
-    const fetchCurrentUser = () => {
-      // Simula o tempo de latência de uma chamada de API
-      setTimeout(() => {
-        // Dados reais fornecidos pelo usuário:
-        setCurrentUser({
-          id: "bd812d7d-e451-4bdc-9679-4fcb4b0fc161",
-          name: "teste123",
-          // O avatar original é null, mas usamos um placeholder para evitar quebras visuais
-          avatar: "https://placehold.co/150x150/500099/ffffff?text=T",
-        });
+    const fetchCurrentUser = async () => {
+      try {
+        setIsLoadingUser(true);
+
+        const token = await AsyncStorage.getItem('token');
+
+        if (!token) {
+          console.log("2. Token não encontrado. Forçando deslogado.");
+          setCurrentUser(null);
+          return;
+        }
+
+
+        try {
+          const userData = await getMe(token);
+
+          setCurrentUser(userData as User);
+
+        } catch (apiError) {
+          console.error("3. FALHA NA CHAMADA GETME:", apiError);
+          throw apiError;
+        }
+
+      } catch (error) {
+        console.error("4. ERRO FATAL AO CARREGAR USUÁRIO:", error);
+        await AsyncStorage.removeItem('@MyApp:token');
+        setCurrentUser(null);
+      } finally {
         setIsLoadingUser(false);
-      }, 500);
+      }
     };
 
-    fetchCurrentUser();
-
-    // Antiga lógica de buscar posts (mantida)
+    // --- Lógica de buscar posts (Mantida) ---
     const fetchPosts = async () => {
       try {
         const data: { posts: Post[] } = await getPosts();
@@ -195,7 +211,9 @@ const HomeScreen: React.FC = () => {
       }
     };
 
+    fetchCurrentUser();
     fetchPosts();
+
   }, []); // Executa apenas na montagem do componente
 
   const handleCreatePost = async (): Promise<void> => {
@@ -216,25 +234,37 @@ const HomeScreen: React.FC = () => {
       formData.append("content", newPostText);
       formData.append("authorId", currentUser.id);
 
-      // CORREÇÃO APLICADA AQUI: Usa formData.entries() para inspecionar os valores
-      for (let [key, value] of formData.entries()) {
-        console.log(`FormData[${key}]:`, value);
-      }
-
       const response = await createPost(formData);
 
+      // 🚨 DEBUG: Veja o que o backend retorna.
+      console.log("Resposta da API de Criação de Post:", response.data);
+
+      const postDataFromResponse = response.data || {};
+
       const newPost: Post = {
-        ...response.data,
+        // 1. Desestrutura o que veio do backend (id, likes, etc.).
+        // Assume que 'id' e 'likes' vieram corretamente.
+        ...postDataFromResponse,
+
+        // 2. GARANTE O CONTEÚDO: Usa o texto digitado, caso o backend o omita.
+        content: postDataFromResponse.content || newPostText,
+
+        // 3. GARANTE O TIMESTAMP: Usa a hora atual se o backend não retornar.
+        // É crucial para o timeAgo().
+        createdAt: postDataFromResponse.createdAt || new Date().toISOString(),
+
+        // 4. Adiciona o usuário logado (que é o autor do post).
         user: {
           ...currentUser,
           name: currentUser.name
         },
       };
 
+      // 5. ATUALIZAÇÃO DE ESTADO
       setPosts([newPost, ...posts]);
       setNewPostText("");
-      Alert.alert("Sucesso", "Postagem criada com sucesso!");
 
+      Alert.alert("Sucesso", "Postagem criada com sucesso!");
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
         console.error("Erro do Backend:", error.response.data);
