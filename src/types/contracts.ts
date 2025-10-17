@@ -1,3 +1,6 @@
+// Define the possible contract statuses to be used in the Contract type.
+export type ContractStatus = 'pending' | 'confirmed' | 'declined' | 'canceled';
+
 export type Contract = {
   id: string;
   eventName: string;
@@ -7,7 +10,7 @@ export type Contract = {
   endTime: string;
   budget: number;
   additionalDetails?: string;
-  isConfirmed: boolean | null;
+  status: ContractStatus;
   createdAt: string;
   updatedAt: string;
   provider: Provider;

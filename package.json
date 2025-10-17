@@ -3,10 +3,10 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "expo start --port 5173",
-    "android": "expo start --android --port 5173",
-    "ios": "expo start --ios --port 5173",
-    "web": "expo start --web --port 5173",
+    "start": "expo start --port 8081",
+    "android": "expo start --android --port 8081",
+    "ios": "expo start --ios --port 8081",
+    "web": "expo start --web --port 8081",
     "test": "jest --watchAll"
   },
   "jest": {
