@@ -164,7 +164,7 @@ export default function ProfileVenue(): JSX.Element {
         <View className="p-4 space-y-6">
           {/* INFORMAÇÕES BÁSICAS */}
           <View className="space-y-1 pb-2">
-            <Text className="text-3xl font-bold text-gray-900">
+            <Text className= "text-3xl font-bold text-gray-900">
               {data.name}
             </Text>
             <Text className="text-gray-500 text-sm">
