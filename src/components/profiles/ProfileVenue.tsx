@@ -16,9 +16,13 @@ import {
   Users,
   Music,
   ExternalLink,
+  MoreVertical,
+  Pencil,
+  LogOut,
 } from "lucide-react-native";
 import { getMe } from "@/src/services/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router"; // ADICIONADO
 
 const { width } = Dimensions.get("window");
 const ITEM_WIDTH = width - 32;
@@ -63,6 +67,10 @@ export default function ProfileVenue(): JSX.Element {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState<number>(0);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  // ADICIONADO: router do Expo Router
+  const router = useRouter();
 
   useEffect(() => {
     const fetchVenueData = async () => {
@@ -160,11 +168,44 @@ export default function ProfileVenue(): JSX.Element {
         <ArrowLeft size={24} color="#000" />
       </TouchableOpacity>
 
+      <TouchableOpacity
+        className="absolute top-10 right-4 p-2 bg-white/70 rounded-full z-10"
+        onPress={() => setShowDropdown(!showDropdown)}
+      >
+        <MoreVertical size={24} color="#000" />
+      </TouchableOpacity>
+
+      {showDropdown && (
+        <View className="absolute top-20 right-12 bg-white rounded-lg shadow-lg z-20 w-40">
+          <TouchableOpacity
+            className="flex-row items-center space-x-2 p-3 border-b border-gray-100"
+            onPress={() => {
+              // vai para a tela de edição do estabelecimento
+              setShowDropdown(false);
+            }}
+          >
+            <Pencil size={18} color="#4B5563" />
+            <Text className="text-gray-700" onPress={() => router.push("/editVenueProfile")}>Editar Perfil</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className="flex-row items-center space-x-2 p-3"
+            onPress={() => {
+              console.log("Sair");
+              setShowDropdown(false);
+            }}
+          >
+            <LogOut size={18} color="#4B5563" />
+            <Text className="text-gray-700">Sair</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <ScrollView className="flex-1 -mt-6 bg-white rounded-t-xl">
         <View className="p-4 space-y-6">
           {/* INFORMAÇÕES BÁSICAS */}
           <View className="space-y-1 pb-2">
-            <Text className= "text-3xl font-bold text-gray-900">
+            <Text className="text-3xl font-bold text-gray-900">
               {data.name}
             </Text>
             <Text className="text-gray-500 text-sm">

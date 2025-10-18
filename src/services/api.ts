@@ -12,7 +12,7 @@ console.log("🔧 API URL configurada:", apiUrl);
 console.log("🌍 Ambiente:", env);
 
 const api = axios.create({
-  baseURL: 'http://localhost:5500',
+  baseURL: apiUrl,
   headers: {
     "Content-Type": "application/json",
   },
