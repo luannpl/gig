@@ -32,12 +32,12 @@ export default function EditBandProfile() {
   useEffect(() => {
     async function fetchVenue() {
       const user = await getMe((await AsyncStorage.getItem("token")) || "");
-      const venueId = user.venue?.id;
-      setVenueId(venueId || null);
-      if (!venueId) return;
+      const userId = user.id;
+      setVenueId(userId || null);
+      if (!userId) return;
       console.log("Buscando dados do estabelecimento com ID:", venueId);
       try {
-        const response = await api.get(`/venues/${venueId}`);
+        const response = await api.get(`/venues/user/${userId}`);
         const data = response.data;
         setVenueName(data.name || "");
         setType(data.type || "");
@@ -69,33 +69,78 @@ export default function EditBandProfile() {
     }
   };
 
+  const getToken = async () => await AsyncStorage.getItem("token");
+
   const handleSave = async () => {
     if (!venueId) {
-      Alert.alert("Erro", "ID do venue não encontrado.");
+      Alert.alert("Erro", "ID do usuário não encontrado. Tente relogar.");
       return;
     }
     if (!venueName || !type || !city) {
-      Alert.alert("Atenção", "Preencha todos os campos");
+      Alert.alert("Atenção", "Preencha todos os campos obrigatórios");
       return;
     }
 
     setLoading(true);
+
+    // 1. Criação do objeto FormData
+    const formData = new FormData();
+
+    // 2. Adiciona os campos de texto
+    formData.append("name", venueName);
+    formData.append("type", type);
+    formData.append("city", city);
+    // Adicione outros campos de texto aqui (description, contact, instagram, etc.)
+    // formData.append("description", 'Sua descrição aqui');
+
+    // 3. Adiciona a foto de Capa (coverPhoto)
+    if (coverImage && coverImage.startsWith("file://")) {
+      const filename = coverImage.split("/").pop() || "cover.jpg";
+      const fileExtension = filename.split(".").pop();
+      const mimeType = `image/${fileExtension === 'jpg' ? 'jpeg' : fileExtension}`;
+
+      formData.append("coverPhoto", {
+        uri: coverImage,
+        name: filename,
+        type: mimeType,
+      } as any);
+    }
+
+    // 4. Adiciona a foto de Perfil (profilePhoto)
+    if (profileImage && profileImage.startsWith("file://")) {
+      const filename = profileImage.split("/").pop() || "profile.jpg";
+      const fileExtension = filename.split(".").pop();
+      const mimeType = `image/${fileExtension === 'jpg' ? 'jpeg' : fileExtension}`;
+
+      formData.append("profilePhoto", {
+        uri: profileImage,
+        name: filename,
+        type: mimeType, // <--- Tipo inferido
+      } as any);
+    }
+
     try {
-      // Changed from /venue to /venues to match the backend route
-      const response = await api.put(`/venues/${venueId}`, {
-        name: venueName, // Changed from venueName to name to match backend expectation
-        type,
-        city,
-        coverPhoto: coverImage, // Changed from coverImage to coverPhoto if that's what backend expects
-        profilePhoto: profileImage, // Changed from profileImage to profilePhoto if that's what backend expects
+      // 5. Configura a requisição PATCH para multipart/form-data
+      const token = await getToken();
+
+      const response = await api.patch(`/venues/user/${venueId}`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // O RN/Axios geralmente define o Content-Type para 'multipart/form-data' 
+          // automaticamente ao enviar um objeto FormData.
+          "Content-Type": "multipart/form-data",
+        },
       });
 
-      console.log("Resposta da API:", response.data);
-      Alert.alert("Sucesso", "Perfil do Estabelecimento atualizado com sucesso!");
+      Alert.alert("Sucesso", "Perfil do Estabelecimento atualizado com sucesso!")
       router.back();
     } catch (error) {
-      console.log("Erro ao atualizar Estabelecimento:", error);
-      const errorMessage = error.response?.data?.message || "Não foi possível atualizar o perfil do estabelecimento";
+      const isAxiosError = (err: any): err is { response: { data: { message: string } } } => !!err.response;
+      console.log("Erro ao atualizar Estabelecimento:", isAxiosError(error) ? error.response?.data : error);
+      const errorMessage = isAxiosError(error)
+        ? (error.response?.data?.message || "Erro desconhecido da API")
+        : "Não foi possível atualizar o perfil do estabelecimento. Verifique a conexão.";
+
       Alert.alert("Erro", errorMessage);
     } finally {
       setLoading(false);
