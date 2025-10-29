@@ -16,9 +16,13 @@ import {
   Users,
   Music,
   ExternalLink,
+  MoreVertical,
+  Pencil,
+  LogOut,
 } from "lucide-react-native";
 import { getMe } from "@/src/services/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter, useFocusEffect } from "expo-router"; // <-- useFocusEffect ADICIONADO
 
 const { width } = Dimensions.get("window");
 const ITEM_WIDTH = width - 32;
@@ -36,7 +40,7 @@ interface VenueDetails {
   description: string | null;
   address: string | null;
   contact: string | null;
-  coverPhoto: string | null;
+  coverPhoto: string | null; // <-- O backend usa coverPhoto (camelCase)
   profilePhoto: string | null;
   twitter: string | null;
   instagram: string | null;
@@ -55,7 +59,8 @@ interface UserMeResponse {
 }
 
 // --- CONSTANTES DE FALLBACK ---
-const DEFAULT_IMAGE = "https://via.placeholder.com/600x400?text=Adicione+uma+Capa";
+// CORRIGIDO: Trocado 'via.placeholder.com' (instável) por 'placehold.co' (estável)
+const DEFAULT_IMAGE = "https://placehold.co/600x400/94a3b8/fff?text=Adicione+uma+Capa";
 const DEFAULT_FOLLOWERS = "0";
 
 export default function ProfileVenue(): JSX.Element {
@@ -63,47 +68,56 @@ export default function ProfileVenue(): JSX.Element {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState<number>(0);
+  const [showDropdown, setShowDropdown] = useState(false);
 
-  useEffect(() => {
-    const fetchVenueData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const router = useRouter();
 
-        // busca o token usando a mesma chave usada em profile.tsx ("token")
-        const token = await AsyncStorage.getItem("token");
-        if (!token) {
-          setError("Token de autenticação não encontrado.");
+  // IMPLEMENTAÇÃO DE useFocusEffect PARA GARANTIR A ATUALIZAÇÃO DA TELA
+  useFocusEffect(
+    React.useCallback(() => {
+      const fetchVenueData = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+
+          const token = await AsyncStorage.getItem("token");
+          if (!token) {
+            setError("Token de autenticação não encontrado.");
+            setLoading(false);
+            return;
+          }
+
+          const response: UserMeResponse = await getMe(token || "");
+
+          if (response.role === "venue" && response.venue) {
+            setVenueData(response.venue);
+          } else {
+            setError("Usuário logado não é um estabelecimento ou dados incompletos.");
+          }
+        } catch (e) {
+          console.error("Erro ao carregar perfil:", e);
+          setError("Não foi possível carregar o perfil. Verifique sua conexão.");
+        } finally {
           setLoading(false);
-          return;
         }
+      };
 
-        // passa o token para o getMe (usar token || "" por segurança)
-        const response: UserMeResponse = await getMe(token || "");
+      fetchVenueData();
+      
+      return () => {
+        // Função de limpeza (opcional)
+      };
+    }, []) // Array de dependências vazio
+  );
 
-        if (response.role === "venue" && response.venue) {
-          setVenueData(response.venue);
-        } else {
-          setError("Usuário logado não é um estabelecimento ou dados incompletos.");
-        }
-      } catch (e) {
-        console.error("Erro ao carregar perfil:", e);
-        setError("Não foi possível carregar o perfil. Verifique sua conexão.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchVenueData();
-  }, []);
-
-  // 🚨 useMemo deve ser chamado sempre, antes de qualquer return condicional!
+  // useMemo deve ser chamado sempre, antes de qualquer return condicional!
   const data = useMemo(() => {
     return {
       name: venueData?.name ?? "",
       category: venueData?.type ?? "",
       location: venueData?.city ?? "",
-      headerImage: venueData?.coverPhoto || DEFAULT_IMAGE,
+      // Utiliza coverPhoto do backend
+      headerImage: venueData?.coverPhoto || DEFAULT_IMAGE, 
       description: venueData?.description || "O estabelecimento ainda não adicionou uma descrição.",
       photos: venueData?.photos || [],
       events: venueData?.events || [],
@@ -160,11 +174,46 @@ export default function ProfileVenue(): JSX.Element {
         <ArrowLeft size={24} color="#000" />
       </TouchableOpacity>
 
+      <TouchableOpacity
+        className="absolute top-10 right-4 p-2 bg-white/70 rounded-full z-10"
+        onPress={() => setShowDropdown(!showDropdown)}
+      >
+        <MoreVertical size={24} color="#000" />
+      </TouchableOpacity>
+
+      {showDropdown && (
+        <View className="absolute top-20 right-12 bg-white rounded-lg shadow-lg z-20 w-40">
+          <TouchableOpacity
+            className="flex-row items-center space-x-2 p-3 border-b border-gray-100"
+            onPress={() => {
+              // Navega para a tela de edição
+              setShowDropdown(false);
+              router.push("/editVenueProfile");
+            }}
+          >
+            <Pencil size={18} color="#4B5563" />
+            <Text className="text-gray-700">Editar Perfil</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className="flex-row items-center space-x-2 p-3"
+            onPress={() => {
+              console.log("Sair");
+              setShowDropdown(false);
+              // Lógica de logout aqui
+            }}
+          >
+            <LogOut size={18} color="#4B5563" />
+            <Text className="text-gray-700">Sair</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <ScrollView className="flex-1 -mt-6 bg-white rounded-t-xl">
         <View className="p-4 space-y-6">
           {/* INFORMAÇÕES BÁSICAS */}
           <View className="space-y-1 pb-2">
-            <Text className= "text-3xl font-bold text-gray-900">
+            <Text className="text-3xl font-bold text-gray-900">
               {data.name}
             </Text>
             <Text className="text-gray-500 text-sm">
