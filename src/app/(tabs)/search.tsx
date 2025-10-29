@@ -12,6 +12,7 @@ import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/src/services/api";
+import { router } from "expo-router";
 
 // Tipos para os dados da banda
 interface Band {
@@ -41,7 +42,7 @@ export default function Search() {
   // Debounce: atualiza o termo de busca após o usuário parar de digitar
   const handleSearchChange = (text: string) => {
     setSearch(text);
-    
+
     // Limpa o timeout anterior
     const timer = setTimeout(() => {
       setDebouncedSearch(text);
@@ -58,7 +59,7 @@ export default function Search() {
       const endpoint = debouncedSearch.trim()
         ? `/bands/pesquisa?name=${encodeURIComponent(debouncedSearch)}&page=1&limit=20`
         : `/bands?page=1&limit=20`;
-      
+
       const response = await api.get(endpoint);
       return response.data;
     },
@@ -67,14 +68,16 @@ export default function Search() {
 
   const renderBandItem = ({ item }: { item: Band }) => (
     <TouchableOpacity
-      onPress={() => console.log("Navegar para banda:", item.id)}
+      onPress={() => router.push(`/bandProfile/${item.id}`)}
       activeOpacity={0.9}
     >
       <View style={styles.bandCard}>
         {/* Imagem da banda */}
         <Image
           source={{
-            uri: item.profilePicture || "https://via.placeholder.com/400x200?text=Sem+Foto",
+            uri:
+              item.profilePicture ||
+              "https://via.placeholder.com/400x200?text=Sem+Foto",
           }}
           style={styles.bandImage}
           resizeMode="cover"
@@ -103,7 +106,7 @@ export default function Search() {
 
   const renderEmptyState = () => {
     if (isLoading) return null;
-    
+
     return (
       <View style={styles.emptyState}>
         <Ionicons name="search" size={64} color="#D1D5DB" />
@@ -182,7 +185,8 @@ export default function Search() {
       {!isLoading && !isError && data && data.data.length > 0 && (
         <View style={styles.resultsInfo}>
           <Text style={styles.resultsText}>
-            {data.total} {data.total === 1 ? "banda encontrada" : "bandas encontradas"}
+            {data.total}{" "}
+            {data.total === 1 ? "banda encontrada" : "bandas encontradas"}
           </Text>
         </View>
       )}
