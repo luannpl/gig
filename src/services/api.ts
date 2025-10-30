@@ -8,7 +8,7 @@ const { apiUrl, env } = Constants.expoConfig?.extra as {
 };
 
 const api = axios.create({
-  baseURL: apiUrl,
+  baseURL: apiUrl || "http://localhost:5500",
   headers: {
     "Content-Type": "application/json",
   },
