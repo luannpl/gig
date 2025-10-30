@@ -8,6 +8,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Image } from "expo-image";
 import {
@@ -19,6 +20,10 @@ import {
   MoreVertical,
   Pencil,
   LogOut,
+  Calendar,
+  Clock,
+  DollarSign,
+  CheckCircle,
 } from "lucide-react-native";
 import { getMe } from "@/src/services/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -29,6 +34,37 @@ const { width } = Dimensions.get("window");
 const ITEM_WIDTH = width - 32;
 const ITEM_MARGIN_RIGHT = 12;
 const ITEM_FULL_WIDTH = ITEM_WIDTH + ITEM_MARGIN_RIGHT;
+
+interface Contract {
+  id: string;
+  eventName: string;
+  eventDate: string;
+  startTime: string;
+  endTime: string;
+  eventType: string;
+  budget: string;
+  additionalDetails?: string;
+  status: 'pending' | 'confirmed' | 'declined' | 'canceled';
+  provider: {  // CORREÇÃO: mudar 'requester' para 'provider'
+    id: number;
+    bandName: string;
+    city: string;
+    genre: string;
+    description: string | null;
+    contact: string | null;
+    members: string | null;
+    twitter: string | null;
+    instagram: string | null;
+    facebook: string | null;
+    profilePicture: string | null;
+    coverPicture: string | null;
+    createdAt: string;
+    updatedAt: string;
+    deletedAt: string | null;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface VenueDetails {
   id: string;
@@ -45,7 +81,6 @@ interface VenueDetails {
   instagram: string | null;
   facebook: string | null;
   photos?: { uri: string }[];
-  events?: { name: string; action: string }[];
 }
 
 interface UserMeResponse {
@@ -61,15 +96,11 @@ const DEFAULT_IMAGE = "";
 const DEFAULT_FOLLOWERS = "0";
 
 // Função para normalizar URLs de imagem do Supabase
-// Função para normalizar URLs de imagem do Supabase
 const normalizeImageUrl = (url: string | null | undefined) => {
   if (!url) return null;
 
-  console.log('URL original:', url);
-
   // Se já é uma URL completa (http ou https)
   if (url.startsWith('http')) {
-    console.log('Já é URL completa');
     return url;
   }
 
@@ -100,12 +131,122 @@ const normalizeImageUrl = (url: string | null | undefined) => {
 
 export default function ProfileVenue(): JSX.Element {
   const [venueData, setVenueData] = useState<VenueDetails | null>(null);
+  const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [contractsLoading, setContractsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState<number>(0);
   const [showDropdown, setShowDropdown] = useState(false);
 
   const router = useRouter();
+
+  // Função para verificar se o contrato está válido (confirmado e dentro do prazo)
+  const isValidContract = (contract: Contract): boolean => {
+    // 1. Verifica se o status é 'confirmed'
+    if (contract.status !== 'confirmed') {
+      return false;
+    }
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const eventDate = new Date(contract.eventDate);
+
+    // 2. Verifica se a data do evento é hoje ou no futuro
+    if (eventDate < today) {
+      return false;
+    }
+
+    // 3. Se for hoje, verifica se ainda não passou do horário de término
+    if (eventDate.getTime() === today.getTime()) {
+      const [endHours, endMinutes] = contract.endTime.split(':').map(Number);
+      const endTime = new Date();
+      endTime.setHours(endHours, endMinutes, 0, 0);
+
+      if (now > endTime) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  // Função para buscar contratos do estabelecimento
+  const fetchContracts = async (venueId: string, token: string) => {
+    try {
+      setContractsLoading(true);
+      
+      const url = `/contract/venue/${venueId}`;
+      
+      const response = await api.get(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      setContracts(response.data);
+    } catch (error: any) {
+      console.error('🔍 [CONTRATOS-ERRO] Erro ao buscar contratos:', error);
+      console.error('🔍 [CONTRATOS-ERRO] Status:', error.response?.status);
+      console.error('🔍 [CONTRATOS-ERRO] Data:', error.response?.data);
+      console.error('🔍 [CONTRATOS-ERRO] Mensagem:', error.message);
+
+      if (error.response?.status === 404) {
+        console.log('🔍 [CONTRATOS-INFO] Nenhum contrato encontrado (404)');
+        setContracts([]);
+      } else {
+        // Para outros erros, também definir como array vazio
+        setContracts([]);
+      }
+    } finally {
+      setContractsLoading(false);
+    }
+  };
+
+  // Função para cancelar contrato
+  const handleCancelContract = async (contractId: string) => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        Alert.alert("Erro", "Token não encontrado");
+        return;
+      }
+
+      Alert.alert(
+        "Cancelar Contrato",
+        "Tem certeza que deseja cancelar este contrato?",
+        [
+          { text: "Não", style: "cancel" },
+          {
+            text: "Sim",
+            onPress: async () => {
+              try {
+                await api.patch(`/contract/${contractId}/cancel`, {}, {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                });
+
+                // Atualizar a lista de contratos
+                if (venueData) {
+                  await fetchContracts(venueData.id, token);
+                }
+
+                Alert.alert("Sucesso", "Contrato cancelado com sucesso!");
+              } catch (error: any) {
+                console.error('Erro ao cancelar contrato:', error);
+                Alert.alert(
+                  "Erro",
+                  error.response?.data?.message || "Erro ao cancelar contrato"
+                );
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Erro ao cancelar contrato:', error);
+    }
+  };
 
   useFocusEffect(
     React.useCallback(() => {
@@ -124,24 +265,25 @@ export default function ProfileVenue(): JSX.Element {
           // Busca os dados do usuário
           const userResponse: UserMeResponse = await getMe(token || "");
 
-          console.log('Dados do usuário:', userResponse);
-
           if (userResponse.role === "venue" && userResponse.venue) {
-            // Busca os dados completos do venue (igual ao componente de edição)
+            // Busca os dados completos do venue
             const venueResponse = await api.get(`/venues/user/${userResponse.id}`, {
               headers: {
                 Authorization: `Bearer ${token}`,
               },
             });
 
-            console.log('Dados completos do venue:', venueResponse.data);
-
             setVenueData(venueResponse.data);
+
+            // Busca os contratos do estabelecimento
+            await fetchContracts(venueResponse.data.id, token);
           } else {
             setError("Usuário logado não é um estabelecimento ou dados incompletos.");
           }
-        } catch (e) {
-          console.error("Erro ao carregar perfil:", e);
+        } catch (e: any) {
+          console.error('🔍 [ERRO] Erro ao carregar perfil:', e);
+          console.error('🔍 [ERRO] Mensagem:', e.message);
+          console.error('🔍 [ERRO] Stack:', e.stack);
           setError("Não foi possível carregar o perfil. Verifique sua conexão.");
         } finally {
           setLoading(false);
@@ -152,15 +294,106 @@ export default function ProfileVenue(): JSX.Element {
     }, [])
   );
 
+  // Função para formatar data
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Verifica se é hoje
+    if (date.toDateString() === today.toDateString()) {
+      return "Hoje";
+    }
+    // Verifica se é amanhã
+    if (date.toDateString() === tomorrow.toDateString()) {
+      return "Amanhã";
+    }
+
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  // Função para formatar hora (remover segundos)
+  const formatTime = (timeString: string) => {
+    return timeString.substring(0, 5);
+  };
+
+  // Função para obter cor do status
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'declined':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'canceled':
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  // Função para obter texto do status
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return 'Confirmado';
+      case 'pending':
+        return 'Pendente';
+      case 'declined':
+        return 'Recusado';
+      case 'canceled':
+        return 'Cancelado';
+      default:
+        return status;
+    }
+  };
+
+  // Função para verificar se o evento é hoje
+  const isToday = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  };
+
+  // Função para verificar se o evento está acontecendo agora
+  const isHappeningNow = (contract: Contract) => {
+    if (!isToday(contract.eventDate)) {
+      return false;
+    }
+
+    const now = new Date();
+    const [startHours, startMinutes] = contract.startTime.split(':').map(Number);
+    const [endHours, endMinutes] = contract.endTime.split(':').map(Number);
+
+    const startTime = new Date();
+    startTime.setHours(startHours, startMinutes, 0, 0);
+
+    const endTime = new Date();
+    endTime.setHours(endHours, endMinutes, 0, 0);
+
+    return now >= startTime && now <= endTime;
+  };
+
+  // Filtra apenas os contratos válidos (confirmados e dentro do prazo)
+  // Filtra apenas os contratos válidos (confirmados e dentro do prazo)
+  const validContracts = useMemo(() => {
+    const valid = contracts.filter(contract => {
+      const isValid = isValidContract(contract);
+      return isValid;
+    });
+
+    return valid;
+  }, [contracts]);
+
   const data = useMemo(() => {
     const normalizedHeaderImage = normalizeImageUrl(venueData?.coverPhoto);
     const normalizedProfileImage = normalizeImageUrl(venueData?.profilePhoto);
-
-    console.log('URLs normalizadas:', {
-      headerImage: normalizedHeaderImage,
-      profileImage: normalizedProfileImage,
-      supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL
-    });
 
     return {
       name: venueData?.name ?? "",
@@ -170,7 +403,7 @@ export default function ProfileVenue(): JSX.Element {
       profileImage: normalizedProfileImage || DEFAULT_IMAGE,
       description: venueData?.description || "O estabelecimento ainda não adicionou uma descrição.",
       photos: venueData?.photos || [],
-      events: venueData?.events || [],
+      contracts: validContracts,
       socials: [
         { name: "Instagram", link: venueData?.instagram, icon: <ExternalLink size={18} color="#4B5563" /> },
         { name: "Facebook", link: venueData?.facebook, icon: <ExternalLink size={18} color="#4B5563" /> },
@@ -178,7 +411,7 @@ export default function ProfileVenue(): JSX.Element {
       ].filter(s => s.link),
       followers: DEFAULT_FOLLOWERS,
     };
-  }, [venueData]);
+  }, [venueData, validContracts]);
 
   if (loading) {
     return (
@@ -211,26 +444,18 @@ export default function ProfileVenue(): JSX.Element {
 
   return (
     <View className="flex-1 bg-white">
-
       <Image
         source={{ uri: data.headerImage }}
         className="w-full h-48 bg-gray-200"
         contentFit="cover"
-        onError={(e) => {
-          console.log('Erro ao carregar header image:', e);
-          console.log('URL tentada:', data.headerImage);
-        }}
         transition={300}
       />
+
       <View className="absolute top-32 left-4 z-10">
         <Image
           source={{ uri: data.profileImage }}
           className="w-24 h-24 rounded-full border-4 border-white bg-gray-200"
           contentFit="cover"
-          onError={(e) => {
-            console.log('Erro ao carregar profile image:', e);
-            console.log('URL tentada:', data.profileImage);
-          }}
           transition={300}
         />
       </View>
@@ -275,9 +500,9 @@ export default function ProfileVenue(): JSX.Element {
         </View>
       )}
 
-      <ScrollView className="flex-1 bg-white rounded-t-xl" contentContainerStyle={{ paddingTop: 20 }}>
+      <ScrollView className="flex-1 bg-white rounded-t-xl" contentContainerStyle={{ paddingTop: 60 }}>
         <View className="p-4 space-y-6">
-          {/* INFORMAÇÕES BÁSICAS - Ajustado para dar espaço para a foto */}
+          {/* INFORMAÇÕES BÁSICAS */}
           <View className="space-y-1 pb-2">
             <Text className="text-3xl font-bold text-gray-900">
               {data.name}
@@ -289,7 +514,6 @@ export default function ProfileVenue(): JSX.Element {
 
           {/* BOTÕES DE INFORMAÇÃO E AÇÃO */}
           <View className="flex-row justify-around p-4 border border-gray-200 rounded-lg">
-            {/* Seguidores */}
             <View className="items-center space-y-1">
               <Users size={20} color="#4B5563" />
               <Text className="text-sm text-gray-700 font-bold">
@@ -300,7 +524,6 @@ export default function ProfileVenue(): JSX.Element {
 
             <View className="w-px h-10 bg-gray-200" />
 
-            {/* Localização */}
             <View className="items-center space-y-1">
               <MapPin size={20} color="#4B5563" />
               <Text className="text-sm text-gray-700 font-bold">
@@ -318,37 +541,69 @@ export default function ProfileVenue(): JSX.Element {
             </Text>
           </View>
 
-          {/* 5. NOSSOS EVENTOS */}
+          {/* 5. EVENTOS/CONTRATOS VÁLIDOS */}
           <View className="space-y-3 pt-4 border border-gray-200 rounded-lg p-4">
-            <Text className="text-xl font-bold text-gray-900">
-              Nossos eventos
-            </Text>
-            {data.events.length > 0 ? (
-              data.events.map((event, index: number) => (
-                <View
-                  key={index}
-                  className="flex-row justify-between items-center py-2"
-                >
-                  <View className="flex-row items-center space-x-2">
-                    <Music size={20} color="#4B5563" />
-                    <Text className="text-gray-700 text-base">{event.name}</Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() =>
-                      console.log(`Ação: ${event.action} ${event.name}`)
-                    }
-                    className="px-4 py-2 border border-black bg-white rounded-lg shadow-sm"
-                  >
-                    <Text className="text-black font-semibold text-sm">
-                      {event.action}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              ))
-            ) : (
-              <Text className="text-gray-500 italic text-center py-4">
-                Nenhum evento agendado.
+            <View className="flex-row justify-between items-center">
+              <Text className="text-xl font-bold text-gray-900">
+                Eventos (Debug)
               </Text>
+              <Text className="text-sm text-gray-500">
+                {contracts.length} total / {validContracts.length} válidos
+              </Text>
+            </View>
+
+            {contractsLoading ? (
+              <View className="py-4">
+                <ActivityIndicator size="small" color="#000000" />
+                <Text className="text-center text-gray-500 mt-2">Carregando eventos...</Text>
+              </View>
+            ) : contracts.length > 0 ? (
+              <View className="space-y-4">
+                {contracts.map((contract) => {
+                  const isValid = isValidContract(contract);
+                  return (
+                    <View
+                      key={contract.id}
+                      className={`bg-white border rounded-lg p-4 shadow-sm ${isValid ? 'border-green-200' : 'border-gray-200 opacity-60'
+                        }`}
+                    >
+                      <View className="flex-row justify-between items-start mb-2">
+                        <Text className="text-lg font-semibold text-gray-900 flex-1">
+                          {contract.eventName}
+                        </Text>
+                        <View className={`px-2 py-1 rounded-full ${contract.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            contract.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-gray-100 text-gray-800'
+                          }`}>
+                          <Text className="text-xs font-medium">
+                            {getStatusText(contract.status)} {isValid ? '✓' : '✗'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Text className="text-sm text-gray-600 mb-2">
+                        Data: {formatDate(contract.eventDate)} | {formatTime(contract.startTime)} - {formatTime(contract.endTime)}
+                      </Text>
+                      <Text className="text-sm text-gray-600">
+                        Banda: {contract.provider.bandName} | R$ {parseFloat(contract.budget).toFixed(2)}
+                      </Text>
+                      <Text className="text-xs text-gray-500 mt-1">
+                        ID: {contract.id}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : (
+              <View className="py-8 items-center">
+                <Calendar size={48} color="#9CA3AF" />
+                <Text className="text-gray-500 text-center mt-2">
+                  Nenhum contrato encontrado.
+                </Text>
+                <Text className="text-gray-400 text-center text-sm mt-1">
+                  Verifique os logs no console para mais detalhes.
+                </Text>
+              </View>
             )}
           </View>
 
@@ -368,7 +623,6 @@ export default function ProfileVenue(): JSX.Element {
                     <Text className="text-gray-700 text-base">{social.name}</Text>
                   </View>
                   <TouchableOpacity
-                    onPress={() => console.log(`Acessar: ${social.link}`)}
                     className="px-4 py-2 border border-black bg-white rounded-lg shadow-sm"
                   >
                     <Text className="text-black font-semibold text-sm">
