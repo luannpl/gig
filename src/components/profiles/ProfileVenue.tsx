@@ -22,14 +22,13 @@ import {
 } from "lucide-react-native";
 import { getMe } from "@/src/services/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter, useFocusEffect } from "expo-router"; // <-- useFocusEffect ADICIONADO
+import { useRouter, useFocusEffect } from "expo-router";
+import api from "../../services/api";
 
 const { width } = Dimensions.get("window");
 const ITEM_WIDTH = width - 32;
 const ITEM_MARGIN_RIGHT = 12;
 const ITEM_FULL_WIDTH = ITEM_WIDTH + ITEM_MARGIN_RIGHT;
-
-// --- TIPAGEM DOS DADOS REAIS DO BACKEND ---
 
 interface VenueDetails {
   id: string;
@@ -40,7 +39,7 @@ interface VenueDetails {
   description: string | null;
   address: string | null;
   contact: string | null;
-  coverPhoto: string | null; // <-- O backend usa coverPhoto (camelCase)
+  coverPhoto: string | null;
   profilePhoto: string | null;
   twitter: string | null;
   instagram: string | null;
@@ -58,10 +57,46 @@ interface UserMeResponse {
   band: any | null;
 }
 
-// --- CONSTANTES DE FALLBACK ---
-// CORRIGIDO: Trocado 'via.placeholder.com' (instável) por 'placehold.co' (estável)
-const DEFAULT_IMAGE = "https://placehold.co/600x400/94a3b8/fff?text=Adicione+uma+Capa";
+const DEFAULT_IMAGE = "";
 const DEFAULT_FOLLOWERS = "0";
+
+// Função para normalizar URLs de imagem do Supabase
+// Função para normalizar URLs de imagem do Supabase
+const normalizeImageUrl = (url: string | null | undefined) => {
+  if (!url) return null;
+
+  console.log('URL original:', url);
+
+  // Se já é uma URL completa (http ou https)
+  if (url.startsWith('http')) {
+    console.log('Já é URL completa');
+    return url;
+  }
+
+  // Se é um caminho do Supabase (começa com /)
+  if (url.startsWith('/')) {
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+
+    console.log('Supabase URL from env:', supabaseUrl);
+
+    // Verifica se a variável de ambiente está definida e é uma URL válida
+    if (supabaseUrl && supabaseUrl.startsWith('https://')) {
+      const fullUrl = `${supabaseUrl}/storage/v1/object/public/gig${url}`;
+      console.log('URL construída:', fullUrl);
+      return fullUrl;
+    } else {
+      console.warn('EXPO_PUBLIC_SUPABASE_URL não está definida ou é inválida');
+
+      // FALLBACK: Substitua pelo SEU_PROJECT_ID real
+      const fallbackUrl = `https://SEU_PROJECT_ID.supabase.co/storage/v1/object/public/gig${url}`;
+      console.log('Usando fallback URL:', fallbackUrl);
+      return fallbackUrl;
+    }
+  }
+
+  console.log('Formato não reconhecido, retornando null');
+  return null;
+};
 
 export default function ProfileVenue(): JSX.Element {
   const [venueData, setVenueData] = useState<VenueDetails | null>(null);
@@ -72,7 +107,6 @@ export default function ProfileVenue(): JSX.Element {
 
   const router = useRouter();
 
-  // IMPLEMENTAÇÃO DE useFocusEffect PARA GARANTIR A ATUALIZAÇÃO DA TELA
   useFocusEffect(
     React.useCallback(() => {
       const fetchVenueData = async () => {
@@ -87,10 +121,22 @@ export default function ProfileVenue(): JSX.Element {
             return;
           }
 
-          const response: UserMeResponse = await getMe(token || "");
+          // Busca os dados do usuário
+          const userResponse: UserMeResponse = await getMe(token || "");
 
-          if (response.role === "venue" && response.venue) {
-            setVenueData(response.venue);
+          console.log('Dados do usuário:', userResponse);
+
+          if (userResponse.role === "venue" && userResponse.venue) {
+            // Busca os dados completos do venue (igual ao componente de edição)
+            const venueResponse = await api.get(`/venues/user/${userResponse.id}`, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
+
+            console.log('Dados completos do venue:', venueResponse.data);
+
+            setVenueData(venueResponse.data);
           } else {
             setError("Usuário logado não é um estabelecimento ou dados incompletos.");
           }
@@ -103,21 +149,25 @@ export default function ProfileVenue(): JSX.Element {
       };
 
       fetchVenueData();
-      
-      return () => {
-        // Função de limpeza (opcional)
-      };
-    }, []) // Array de dependências vazio
+    }, [])
   );
 
-  // useMemo deve ser chamado sempre, antes de qualquer return condicional!
   const data = useMemo(() => {
+    const normalizedHeaderImage = normalizeImageUrl(venueData?.coverPhoto);
+    const normalizedProfileImage = normalizeImageUrl(venueData?.profilePhoto);
+
+    console.log('URLs normalizadas:', {
+      headerImage: normalizedHeaderImage,
+      profileImage: normalizedProfileImage,
+      supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL
+    });
+
     return {
       name: venueData?.name ?? "",
       category: venueData?.type ?? "",
       location: venueData?.city ?? "",
-      // Utiliza coverPhoto do backend
-      headerImage: venueData?.coverPhoto || DEFAULT_IMAGE, 
+      headerImage: normalizedHeaderImage || DEFAULT_IMAGE,
+      profileImage: normalizedProfileImage || DEFAULT_IMAGE,
       description: venueData?.description || "O estabelecimento ainda não adicionou uma descrição.",
       photos: venueData?.photos || [],
       events: venueData?.events || [],
@@ -161,32 +211,49 @@ export default function ProfileVenue(): JSX.Element {
 
   return (
     <View className="flex-1 bg-white">
-      {/* 1. IMAGEM DO HEADER */}
+
       <Image
         source={{ uri: data.headerImage }}
         className="w-full h-48 bg-gray-200"
         contentFit="cover"
+        onError={(e) => {
+          console.log('Erro ao carregar header image:', e);
+          console.log('URL tentada:', data.headerImage);
+        }}
+        transition={300}
       />
+      <View className="absolute top-32 left-4 z-10">
+        <Image
+          source={{ uri: data.profileImage }}
+          className="w-24 h-24 rounded-full border-4 border-white bg-gray-200"
+          contentFit="cover"
+          onError={(e) => {
+            console.log('Erro ao carregar profile image:', e);
+            console.log('URL tentada:', data.profileImage);
+          }}
+          transition={300}
+        />
+      </View>
+
       <TouchableOpacity
-        className="absolute top-10 left-4 p-2 bg-white/70 rounded-full z-10"
-        onPress={() => console.log("Voltar")}
+        className="absolute top-10 left-4 p-2 bg-white/70 rounded-full z-20"
+        onPress={() => router.back()}
       >
         <ArrowLeft size={24} color="#000" />
       </TouchableOpacity>
 
       <TouchableOpacity
-        className="absolute top-10 right-4 p-2 bg-white/70 rounded-full z-10"
+        className="absolute top-10 right-4 p-2 bg-white/70 rounded-full z-20"
         onPress={() => setShowDropdown(!showDropdown)}
       >
         <MoreVertical size={24} color="#000" />
       </TouchableOpacity>
 
       {showDropdown && (
-        <View className="absolute top-20 right-12 bg-white rounded-lg shadow-lg z-20 w-40">
+        <View className="absolute top-20 right-12 bg-white rounded-lg shadow-lg z-30 w-40">
           <TouchableOpacity
             className="flex-row items-center space-x-2 p-3 border-b border-gray-100"
             onPress={() => {
-              // Navega para a tela de edição
               setShowDropdown(false);
               router.push("/editVenueProfile");
             }}
@@ -200,7 +267,6 @@ export default function ProfileVenue(): JSX.Element {
             onPress={() => {
               console.log("Sair");
               setShowDropdown(false);
-              // Lógica de logout aqui
             }}
           >
             <LogOut size={18} color="#4B5563" />
@@ -209,9 +275,9 @@ export default function ProfileVenue(): JSX.Element {
         </View>
       )}
 
-      <ScrollView className="flex-1 -mt-6 bg-white rounded-t-xl">
+      <ScrollView className="flex-1 bg-white rounded-t-xl" contentContainerStyle={{ paddingTop: 20 }}>
         <View className="p-4 space-y-6">
-          {/* INFORMAÇÕES BÁSICAS */}
+          {/* INFORMAÇÕES BÁSICAS - Ajustado para dar espaço para a foto */}
           <View className="space-y-1 pb-2">
             <Text className="text-3xl font-bold text-gray-900">
               {data.name}
@@ -242,52 +308,6 @@ export default function ProfileVenue(): JSX.Element {
               </Text>
               <Text className="text-xs text-gray-500">Local</Text>
             </View>
-          </View>
-
-          {/* 3. GALERIA DE FOTOS */}
-          <View className="space-y-3 pt-4 border border-gray-200 rounded-lg p-4">
-            <Text className="text-xl font-bold text-gray-900">Fotos</Text>
-            {data.photos.length > 0 ? (
-              <>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  pagingEnabled={true}
-                  snapToInterval={ITEM_FULL_WIDTH}
-                  decelerationRate="fast"
-                  snapToAlignment="start"
-                  onScroll={handleScroll}
-                  scrollEventThrottle={16}
-                >
-                  {data.photos.map((photo, index: number) => (
-                    <Image
-                      key={index}
-                      source={{ uri: photo.uri }}
-                      className="h-48 rounded-lg bg-gray-200"
-                      style={{
-                        width: ITEM_WIDTH,
-                        height: 180,
-                        marginRight: ITEM_MARGIN_RIGHT,
-                      }}
-                      contentFit="cover"
-                    />
-                  ))}
-                </ScrollView>
-                <View className="flex-row justify-center space-x-2">
-                  {data.photos.map((_, index: number) => (
-                    <View
-                      key={index}
-                      className={`w-2 h-2 rounded-full transition-all duration-300 ${index === activeIndex ? "bg-gray-800 w-3" : "bg-gray-300"
-                        }`}
-                    />
-                  ))}
-                </View>
-              </>
-            ) : (
-              <Text className="text-gray-500 italic text-center py-4">
-                Nenhuma foto adicionada ainda.
-              </Text>
-            )}
           </View>
 
           {/* 4. DESCRIÇÃO */}
