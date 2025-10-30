@@ -14,66 +14,40 @@ import {
 } from "react-native";
 import { Ionicons, Entypo, FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import api from "@/src/services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Band } from "@/src/types/band";
+import { getBandByUserId } from "@/src/services/bandas";
 
 const { width } = Dimensions.get("window");
-
-type Music = { nome: string; url?: string };
-type Band = {
-  id: number;
-  nome: string;
-  genero: string;
-  cidade: string;
-  integrantes: number;
-  descricao: string;
-  userId?: string;
-  fotoCapa?: any;
-  fotoPerfil?: any;
-  fotos?: any[];
-  musicas?: Music[];
-};
 
 export default function ProfileBand() {
   const router = useRouter();
 
-  // --- MOCK: se usar require(...) garanta que o arquivo exista ---
-  const [banda] = useState<Band>({
-    id: 1,
-    nome: "Cidadão Instigado",
-    genero: "Rock Alternativo",
-    cidade: "Fortaleza, CE",
-    integrantes: 5,
-    userId: "0e2d0646-ecf9-4f86-8ec3-1340430a6efa",
-    descricao:
-      "O Cidadão Instigado é uma banda brasileira de rock, criada em 1996, em Fortaleza",
-    // se esses arquivos existirem, OK. Caso contrário troque por URLs ou adicione os arquivos na pasta correta
-    fotoCapa: require("../../assets/images/cidadaoInst4.jpg"),
-    fotoPerfil: require("../../assets/images/cidadaoInstigado.jpg"),
-    fotos: [
-      require("../../assets/images/cidadaoInst1.jpg"),
-      require("../../assets/images/cidadaoInst2.jpg"),
-      require("../../assets/images/cidadaoInst3.jpg"),
-    ],
-    musicas: [{ nome: "Como as Luzes" }, { nome: "Contando Estrelas" }],
+  const [banda, setBanda] = useState<Band>({
+    id: 0,
+    bandName: "",
+    city: "",
+    contact: null,
+    coverPicture: null,
+    createdAt: "",
+    deletedAt: null,
+    description: null,
+    facebook: null,
+    genre: "",
+    instagram: null,
+    members: null,
+    profilePicture: null,
+    twitter: null,
+    updatedAt: "",
+    userId: {
+      id: "",
+      role: "",
+    },
   });
 
-  // helper: aceita require(...) (número) ou URL string
-  const getImageSource = (img: any) => {
-    if (!img) {
-      // fallback remoto — não depende de arquivo local
-      return { uri: "https://via.placeholder.com/400x200?text=Sem+imagem" };
-    }
-    if (typeof img === "number") return img; // require(...) -> número
-    if (typeof img === "string") return { uri: img }; // url
-    return img;
-  };
-
-  // Carousel state
   const [activeIndex, setActiveIndex] = useState(0);
   const flatRef = useRef<FlatList<any> | null>(null);
   const [user, setUser] = useState<any | null>(null);
-  // const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const carregarUser = async () => {
@@ -81,18 +55,30 @@ export default function ProfileBand() {
       if (userData) {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
-        return;
+        // setId(parsedUser.id);
+
+        // Já busca a banda aqui direto:
+        const bandData = await getBandByUserId(parsedUser.id);
+        setBanda(bandData);
+      } else {
+        router.replace("/(auth)/sign-in");
+        await AsyncStorage.multiRemove(["token", "user"]);
       }
-      router.replace("/(auth)/sign-in");
-      AsyncStorage.removeItem("token");
-      AsyncStorage.removeItem("user");
     };
+
     carregarUser();
   }, []);
 
-  // if (loading) return <Text>Carregando...</Text>;
+  const getImageSource = (img: any) => {
+    if (!img) {
+      return { uri: "https://via.placeholder.com/400x200?text=Sem+imagem" };
+    }
+    if (typeof img === "number") return img;
+    if (typeof img === "string") return { uri: img };
+    return img;
+  };
 
-  const isOwner = user?.id === banda.userId;
+  // if (loading) return <Text>Carregando...</Text>;
 
   //   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
   //     if (viewableItems.length > 0) setActiveIndex(viewableItems[0].index ?? 0);
@@ -116,77 +102,82 @@ export default function ProfileBand() {
         contentContainerStyle={{ paddingBottom: 40 }}
       >
         {/* CAPA */}
-        <Image
-          source={getImageSource(banda.fotoCapa)}
-          style={styles.cover}
-          resizeMode="cover"
-        />
+        <View>
+          <Image
+            source={
+              banda.coverPicture
+                ? getImageSource(banda.coverPicture)
+                : require("./../../assets/images/icon.png")
+            }
+            style={styles.cover}
+            resizeMode="cover"
+          />
+        </View>
 
-        {/* Header - perfil flutuante */}
+        {/* HEADER */}
         <View style={styles.header}>
           <View style={styles.avatarWrap}>
             <Image
               source={
-                banda.fotoPerfil
-                  ? getImageSource(banda.fotoPerfil)
-                  : { uri: "https://via.placeholder.com/140" }
+                banda.profilePicture
+                  ? getImageSource(banda.profilePicture)
+                  : require("./../../assets/images/icon.png")
               }
               style={styles.avatar}
             />
           </View>
 
           <View style={styles.titleBlock}>
-            <Text style={styles.title}>{banda.nome}</Text>
-            <Text style={styles.subtitle}>{banda.genero}</Text>
+            <Text style={styles.title}>{banda.bandName}</Text>
+            <Text style={styles.subtitle}>{banda.genre}</Text>
 
-            {isOwner ? (
-              <TouchableOpacity
-                style={[styles.hireButton, { backgroundColor: "#000" }]}
-                activeOpacity={0.8}
-                onPress={() => router.push("/editBandProfile")}
-              >
-                <Text style={[styles.hireText, { color: "#fff" }]}>
-                  Editar perfil
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={styles.hireButton}
-                activeOpacity={0.8}
-                onPress={() => console.log("Contratar", banda.id)}
-              >
-                <Text style={styles.hireText}>Contratar</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={styles.hireButton}
+              activeOpacity={0.8}
+              onPress={() => router.push("/editBandProfile")}
+            >
+              <Text style={styles.hireText}>Editar Perfil</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Info Boxes */}
+        {/* INFO */}
         <View style={styles.infoRow}>
           <View style={styles.infoCard}>
             <Ionicons name="people" size={18} />
-            <Text style={styles.infoText}>{banda.integrantes} membros</Text>
+            <Text style={styles.infoText}>
+              {banda.members ? `${banda.members} membros` : "Carreira Solo"}
+            </Text>
           </View>
 
           <View style={styles.infoCard}>
             <Entypo name="location-pin" size={18} />
-            <Text style={styles.infoText}>{banda.cidade}</Text>
+            <Text style={styles.infoText}>{banda.city}</Text>
           </View>
 
           <View style={styles.infoCard}>
             <FontAwesome name="music" size={18} />
             <Text style={styles.infoText} numberOfLines={1}>
-              {banda.genero}
+              {banda.genre}
             </Text>
           </View>
         </View>
 
-        {/* Fotos - Carrossel */}
-        <Text style={styles.sectionTitle}>Fotos</Text>
+        {/* DESCRIÇÃO */}
+        <Text style={styles.sectionTitle}>Descrição</Text>
+        <View style={styles.card}>
+          <Text style={styles.description}>
+            {banda.description ||
+              "Esta banda ainda não adicionou uma descrição."}
+          </Text>
+        </View>
+
+        {/* FOTOS */}
+        {/* <Text style={styles.sectionTitle}>Fotos</Text>
         <View style={{ paddingLeft: 15 }}>
           <FlatList
             ref={flatRef}
-            data={banda.fotos ?? []}
+            data={banda.profilePicture ? [banda.profilePicture] : []}
             horizontal
             showsHorizontalScrollIndicator={false}
             keyExtractor={(_, idx) => String(idx)}
@@ -194,50 +185,23 @@ export default function ProfileBand() {
             pagingEnabled
             snapToAlignment="center"
             decelerationRate="fast"
-            // onViewableItemsChanged={onViewableItemsChanged}
-            // viewabilityConfig={viewConfigRef.current}
             contentContainerStyle={{ paddingRight: 15 }}
           />
 
           <View style={styles.dots}>
-            {(banda.fotos ?? []).map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.dot,
-                  activeIndex === i ? styles.dotActive : undefined,
-                ]}
-              />
-            ))}
+            {(banda.profilePicture ? [banda.profilePicture] : []).map(
+              (_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.dot,
+                    activeIndex === i ? styles.dotActive : undefined,
+                  ]}
+                />
+              )
+            )}
           </View>
-        </View>
-
-        {/* Descrição */}
-        <Text style={styles.sectionTitle}>Descrição</Text>
-        <View style={styles.card}>
-          <Text style={styles.description}>{banda.descricao}</Text>
-        </View>
-
-        {/* Músicas */}
-        <Text style={styles.sectionTitle}>Nossas músicas</Text>
-        <View style={styles.card}>
-          {banda.musicas?.map((m, index) => (
-            <View style={styles.musicRow} key={index}>
-              <View
-                style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
-              >
-                <Ionicons name="musical-note" size={18} />
-                <Text style={styles.musicTitle}>{m.nome}</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.playBtn}
-                onPress={() => console.log("Play:", m.url)}
-              >
-                <Text style={styles.playText}>Play</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
+        </View> */}
 
         <View style={{ height: 30 }} />
       </ScrollView>
