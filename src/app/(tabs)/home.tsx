@@ -1,5 +1,6 @@
 import { getPosts, createPost } from "@/src/services/posts";
 import { getMe } from "@/src/services/auth";
+import { getCommentsByPostId, createComment } from "@/src/services/comments";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useState, useEffect } from "react";
 import {
@@ -54,7 +55,6 @@ interface CommentsModalProps {
   setNewComment: React.Dispatch<React.SetStateAction<string>>;
   handleAddComment: () => void;
 }
-
 interface Comment {
   id: number;
   author: string;
@@ -80,6 +80,7 @@ const timeAgo = (dateString: string): string => {
 
 // --- Componente Modal de Comentários ---
 
+// Update CommentsModal to fetch and display real comments
 const CommentsModal: React.FC<CommentsModalProps> = ({
   showComments,
   onClose,
@@ -87,71 +88,120 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
   newComment,
   setNewComment,
   handleAddComment,
-}) => (
-  <Modal
-    visible={showComments}
-    animationType="slide"
-    presentationStyle="pageSheet"
-  >
-    <KeyboardAvoidingView
-      className="flex-1"
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+}) => {
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+
+  // Fetch comments when modal opens
+  useEffect(() => {
+    if (showComments && selectedPost) {
+      loadComments();
+    }
+  }, [showComments, selectedPost]);
+
+  const loadComments = async () => {
+    if (!selectedPost) return;
+    
+    setIsLoadingComments(true);
+    try {
+      const fetchedComments = await getCommentsByPostId(selectedPost.id);
+      setComments(fetchedComments);
+    } catch (error) {
+      console.error("Error loading comments:", error);
+      Alert.alert("Erro", "Não foi possível carregar os comentários.");
+    } finally {
+      setIsLoadingComments(false);
+    }
+  };
+
+  const timeAgo = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.round((now.getTime() - date.getTime()) / 1000);
+    const minutes = Math.round(seconds / 60);
+    const hours = Math.round(minutes / 60);
+    const days = Math.round(hours / 24);
+
+    if (seconds < 60) return `${seconds}s atrás`;
+    if (minutes < 60) return `${minutes}m atrás`;
+    if (hours < 24) return `${hours}h atrás`;
+    return `${days}d atrás`;
+  };
+
+  return (
+    <Modal
+      visible={showComments}
+      animationType="slide"
+      presentationStyle="pageSheet"
     >
-      <SafeAreaView className="flex-1 bg-gray-100">
-        <View className="bg-white flex-row justify-between items-center px-5 py-4 border-b border-gray-200">
-          <TouchableOpacity onPress={onClose}>
-            <Text className="text-lg font-bold text-blue-500">✕</Text>
-          </TouchableOpacity>
-          <Text className="text-lg font-bold text-black">Comentários</Text>
-          <View className="w-6" />
-        </View>
-
-        {selectedPost && (
-          <View className="bg-white m-4 p-4 rounded-lg border-l-4 border-blue-500">
-            <Text className="font-bold mb-1">{selectedPost.user.name}</Text>
-            <Text className="text-gray-500">{selectedPost.content}</Text>
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <SafeAreaView className="flex-1 bg-gray-100">
+          <View className="bg-white flex-row justify-between items-center px-5 py-4 border-b border-gray-200">
+            <TouchableOpacity onPress={onClose}>
+              <Text className="text-lg font-bold text-blue-500">✕</Text>
+            </TouchableOpacity>
+            <Text className="text-lg font-bold text-black">Comentários</Text>
+            <View className="w-6" />
           </View>
-        )}
 
-        <FlatList<Comment>
-          data={[]}
-          keyExtractor={(item) => item.id.toString()}
-          className="flex-1 px-4"
-          renderItem={({ item }) => (
-            <View className="bg-white p-4 mb-2.5 rounded-lg">
-              <Text className="font-bold mb-1">{item.author}</Text>
-              <Text className="mb-1 leading-5">{item.text}</Text>
-              <Text className="text-gray-500 text-xs">{item.timeAgo}</Text>
+          {selectedPost && (
+            <View className="bg-white m-4 p-4 rounded-lg border-l-4 border-blue-500">
+              <Text className="font-semibold mb-1">{selectedPost.user.name}</Text>
+              <Text className="text-gray-500">{selectedPost.content}</Text>
             </View>
           )}
-          ListEmptyComponent={
-            <Text className="text-center text-gray-500 italic mt-12">
-              Nenhum comentário ainda
-            </Text>
-          }
-        />
 
-        <View className="bg-white px-4 py-2.5 border-t border-gray-200 flex-row items-end">
-          <TextInput
-            className="flex-1 border border-gray-200 rounded-full px-4 py-2.5 mr-2.5 max-h-20"
-            placeholder="Adicione um comentário..."
-            placeholderTextColor="#999"
-            value={newComment}
-            onChangeText={setNewComment}
-            multiline
-          />
-          <TouchableOpacity
-            className="bg-blue-500 rounded-full px-5 py-2.5"
-            onPress={handleAddComment}
-          >
-            <Text className="text-white font-semibold">Enviar</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    </KeyboardAvoidingView>
-  </Modal>
-);
+          {isLoadingComments ? (
+            <View className="flex-1 justify-center items-center">
+              <ActivityIndicator size="large" color="#3b82f6" />
+              <Text className="text-gray-500 mt-2">Carregando comentários...</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={comments}
+              keyExtractor={(item) => item.id.toString()}
+              className="flex-1 px-4"
+              renderItem={({ item }) => (
+                <View className="bg-white p-4 mb-2.5 rounded-lg shadow-sm">
+                  <Text className="font-bold mb-1">{item.user.name}</Text>
+                  <Text className="mb-1 leading-5">{item.comment}</Text>
+                  <Text className="text-gray-500 text-xs">
+                    {timeAgo(item.createdAt)}
+                  </Text>
+                </View>
+              )}
+              ListEmptyComponent={
+                <Text className="text-center text-gray-500 italic mt-12">
+                  Nenhum comentário ainda. Seja o primeiro!
+                </Text>
+              }
+            />
+          )}
 
+          <View className="bg-white px-4 py-2.5 border-t border-gray-200 flex-row items-end">
+            <TextInput
+              className="flex-1 border border-gray-200 rounded-full px-4 py-2.5 mr-2.5 max-h-20"
+              placeholder="Adicione um comentário..."
+              placeholderTextColor="#999"
+              value={newComment}
+              onChangeText={setNewComment}
+              multiline
+            />
+            <TouchableOpacity
+              className="bg-blue-500 rounded-full px-5 py-2.5"
+              onPress={handleAddComment}
+            >
+              <Text className="text-white font-semibold">Enviar</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+};
 // --- Componente Principal ---
 
 const HomeScreen: React.FC = () => {
@@ -477,9 +527,37 @@ const HomeScreen: React.FC = () => {
     setShowComments(true);
   };
 
-  const handleAddComment = (): void => {
-    console.log(`Adding comment to post ${selectedPostId} is not implemented.`);
-  };
+  const handleAddComment = async () => {
+  if (!newComment.trim()) {
+    Alert.alert("Erro", "Por favor, escreva um comentário.");
+    return;
+  }
+
+  if (!selectedPostId || !currentUser) {
+    Alert.alert("Erro", "Não foi possível adicionar o comentário.");
+    return;
+  }
+
+  try {
+    await createComment({
+      comment: newComment,
+      postId: Number(selectedPostId),
+      userId: currentUser.id,
+    });
+
+    // Invalidate posts query to update comment count
+    queryClient.invalidateQueries({ queryKey: ["posts"] });
+
+    // Clear input and close modal
+    setNewComment("");
+    setShowComments(false);
+    
+    Alert.alert("Sucesso", "Comentário adicionado!");
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    Alert.alert("Erro", "Não foi possível adicionar o comentário.");
+  }
+};
 
   const selectedPost: Post | undefined = posts.find(
     (post) => post.id === selectedPostId
