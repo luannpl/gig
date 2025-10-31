@@ -180,6 +180,23 @@ const ContractsDashboard: React.FC<DashboardProps> = ({ allContracts }) => {
         <View style={styles.chartContainer}>
           <Text style={styles.chartTitle}>Status dos Contratos</Text>
           <PieChartCustom data={pieChartData} size={200} />
+          {/* --- LEGENDA ADICIONADA --- */}
+          <View style={styles.legendContainer}>
+            {pieChartData.map((item) => (
+              <View key={item.label} style={styles.legendItem}>
+                <View
+                  style={[
+                    styles.legendColorBox,
+                    { backgroundColor: item.color },
+                  ]}
+                />
+                <Text
+                  style={styles.legendText}
+                >{`${item.label} (${item.value})`}</Text>
+              </View>
+            ))}
+          </View>
+          {/* --- FIM DA LEGENDA --- */}
         </View>
       )}
 
@@ -265,6 +282,31 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 10,
     alignSelf: "flex-start",
+  },
+  legendContainer: {
+    marginTop: 15,
+    width: "100%",
+    paddingHorizontal: 10,
+    display: "flex",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 10,
+    marginBottom: 5,
+  },
+  legendColorBox: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 6,
+  },
+  legendText: {
+    fontSize: 14,
+    color: COLORS.text,
   },
   emptyContainer: {
     flex: 1,
