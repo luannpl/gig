@@ -1,5 +1,6 @@
 // src/screens/ContratosScreen.tsx
 import ContractCard from "@/src/components/ContractCard";
+import ContractsDashboard from "@/src/components/ContractsDashboard";
 import api from "@/src/services/api";
 import { Contract } from "@/src/types/contracts";
 import { useQuery } from "@tanstack/react-query";
@@ -34,10 +35,15 @@ type UserInfo = {
 };
 
 // Tipagem para as abas de navegação, incluindo o novo estado "Cancelados"
-type ActiveTab = "Pendentes" | "Aceitos" | "Recusados" | "Cancelados";
+type ActiveTab =
+  | "Painel"
+  | "Pendentes"
+  | "Aceitos"
+  | "Recusados"
+  | "Cancelados";
 
 const AdminContractScreen: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<ActiveTab>("Pendentes");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("Painel");
 
   // Busca os dados do perfil do usuário logado
   const { data: me, isLoading: isLoadingProfile } = useQuery<Profile>({
@@ -89,6 +95,8 @@ const AdminContractScreen: React.FC = () => {
     if (!contracts) return [];
 
     switch (activeTab) {
+      case "Painel":
+        return contracts;
       case "Pendentes":
         return contracts.filter((contract) => contract.status === "pending");
       case "Aceitos":
@@ -138,6 +146,20 @@ const AdminContractScreen: React.FC = () => {
 
       {/* Abas de Navegação */}
       <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "Painel" && styles.activeTab]}
+          onPress={() => setActiveTab("Painel")}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "Painel" && styles.activeTabText,
+            ]}
+          >
+            Painel
+          </Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={[styles.tab, activeTab === "Pendentes" && styles.activeTab]}
           onPress={() => setActiveTab("Pendentes")}
@@ -192,24 +214,28 @@ const AdminContractScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Lista de Contratos */}
-      <ScrollView contentContainerStyle={styles.scrollViewContent}>
-        {getFilteredContracts().map((contract) => (
-          <ContractCard
-            key={contract.id}
-            contract={contract}
-            profileId={userInfo.id}
-            userType={userInfo.type}
-          />
-        ))}
-        {getFilteredContracts().length === 0 && (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              Nenhum contrato {activeTab.toLowerCase()} encontrado.
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+      {/* Conteúdo: Painel (Dashboard) ou Lista */}
+      {activeTab === "Painel" ? (
+        <ContractsDashboard allContracts={contracts} />
+      ) : (
+        <ScrollView contentContainerStyle={styles.scrollViewContent}>
+          {getFilteredContracts().map((contract) => (
+            <ContractCard
+              key={contract.id}
+              contract={contract}
+              profileId={userInfo.id}
+              userType={userInfo.type}
+            />
+          ))}
+          {getFilteredContracts().length === 0 && (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>
+                Nenhum contrato {activeTab.toLowerCase()} encontrado.
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 };
@@ -256,7 +282,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: "500",
     color: "#000",
   },
