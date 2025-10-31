@@ -1,262 +1,340 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
   Image,
+  StyleSheet,
   ScrollView,
   TouchableOpacity,
   FlatList,
   Dimensions,
   SafeAreaView,
   StatusBar,
-  Linking,
 } from "react-native";
-import {
-  Ionicons,
-  Entypo,
-  FontAwesome,
-  FontAwesome5,
-} from "@expo/vector-icons";
+import { Ionicons, Entypo, FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Band } from "@/src/types/band";
-import { getBandByUserId, getReviewsByBand } from "@/src/services/bandas";
-import { Review } from "@/src/types/review";
 
 const { width } = Dimensions.get("window");
+
+type Music = { nome: string; url?: string };
+type Band = {
+  id: number;
+  nome: string;
+  genero: string;
+  cidade: string;
+  integrantes: number;
+  descricao: string;
+  userId?: string;
+  fotoCapa?: any;
+  fotoPerfil?: any;
+  fotos?: any[];
+  musicas?: Music[];
+};
 
 export default function ProfileBand() {
   const router = useRouter();
 
-  const [banda, setBanda] = useState<Band>({
-    id: 0,
-    bandName: "",
-    city: "",
-    contact: null,
-    coverPicture: null,
-    createdAt: "",
-    deletedAt: null,
-    description: null,
-    facebook: null,
-    genre: "",
-    instagram: null,
-    members: null,
-    profilePicture: null,
-    twitter: null,
-    updatedAt: "",
-    userId: {
-      id: "",
-      role: "",
-    },
+  const [banda] = useState<Band>({
+    id: 1,
+    nome: "Cidadão Instigado",
+    genero: "Rock Alternativo",
+    cidade: "Fortaleza, CE",
+    integrantes: 5,
+    userId: "0e2d0646-ecf9-4f86-8ec3-1340430a6efa",
+    descricao:
+      "O Cidadão Instigado é uma banda brasileira de rock, criada em 1996, em Fortaleza.",
+    fotoCapa: require("../../assets/images/cidadaoInst4.jpg"),
+    fotoPerfil: require("../../assets/images/cidadaoInstigado.jpg"),
+    fotos: [
+      require("../../assets/images/cidadaoInst1.jpg"),
+      require("../../assets/images/cidadaoInst2.jpg"),
+      require("../../assets/images/cidadaoInst3.jpg"),
+    ],
+    musicas: [{ nome: "Como as Luzes" }, { nome: "Contando Estrelas" }],
   });
 
+  const getImageSource = (img: any) => {
+    if (!img)
+      return { uri: "https://via.placeholder.com/400x200?text=Sem+imagem" };
+    if (typeof img === "number") return img;
+    if (typeof img === "string") return { uri: img };
+    return img;
+  };
+
+  const [activeIndex, setActiveIndex] = useState(0);
+  const flatRef = useRef<FlatList<any> | null>(null);
   const [user, setUser] = useState<any | null>(null);
 
-  // --- MOCK de avaliações (substituir depois por chamada à API) ---
-  const [avaliacoes, setAvaliacoes] = useState<Review[]>([]);
-
+  // --- Carrega usuário logado ---
   useEffect(() => {
     const carregarUser = async () => {
       const userData = await AsyncStorage.getItem("user");
       if (userData) {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
-        const bandData = await getBandByUserId(parsedUser.id);
-        setBanda(bandData);
-        const reviewsData = await getReviewsByBand(bandData.id);
-        setAvaliacoes(reviewsData);
-      } else {
-        router.replace("/(auth)/sign-in");
-        await AsyncStorage.multiRemove(["token", "user"]);
+        return;
       }
+      router.replace("/(auth)/sign-in");
+      AsyncStorage.removeItem("token");
+      AsyncStorage.removeItem("user");
     };
-
     carregarUser();
   }, []);
 
-  const getImageSource = (img: any) => {
-    if (!img) {
-      return { uri: "https://via.placeholder.com/400x200?text=Sem+imagem" };
+  // --- Função de Logout ---
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("user");
+      router.replace("/(auth)/sign-in");
+    } catch (error) {
+      console.error("Erro ao fazer logout:", error);
     }
-    if (typeof img === "number") return img;
-    if (typeof img === "string") return { uri: img };
-    return img;
   };
 
-  const renderStars = (rating: number) => {
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        <FontAwesome
-          key={i}
-          name={i <= rating ? "star" : "star-o"}
-          size={18}
-          color={i <= rating ? "#FFD700" : "#C0C0C0"}
-          style={{ marginRight: 2 }}
-        />
-      );
-    }
-    return <View className="flex-row mt-1">{stars}</View>;
-  };
-
-  const renderAvaliacao = ({ item }: { item: any }) => (
-    <View className="bg-white border border-gray-200 rounded-xl p-4 mb-3 shadow-sm">
-      <View className="flex-row justify-between items-center">
-        <Text className="font-semibold text-gray-900">{item.user.name}</Text>
-        <Text className="text-xs text-gray-500">
-          {new Date(item.createdAt).toLocaleDateString("pt-BR")}
-        </Text>
-      </View>
-
-      {renderStars(item.rating)}
-
-      <Text className="text-sm text-gray-700 mt-2 leading-5">
-        {item.comment}
-      </Text>
-    </View>
+  const renderPhoto = ({ item }: { item: any }) => (
+    <Image source={getImageSource(item)} style={styles.photo} resizeMode="cover" />
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" />
       <ScrollView
-        className="flex-1 bg-white"
-        contentContainerStyle={{ paddingBottom: 40 }}
+        style={styles.container}
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
         {/* CAPA */}
-        <View className="w-full h-44 justify-center items-center bg-gray-300 overflow-hidden">
-          <Image
-            source={
-              banda.coverPicture
-                ? getImageSource(banda.coverPicture)
-                : require("./../../assets/images/icon.png")
-            }
-            className="w-full h-28 bg-gray-300 rounded-b-2xl"
-            resizeMode="cover"
-          />
-        </View>
+        <Image
+          source={getImageSource(banda.fotoCapa)}
+          style={styles.cover}
+          resizeMode="cover"
+        />
 
-        {/* HEADER */}
-        <View className="-mt-16 px-4 items-center">
-          <View className="w-28 h-28 rounded-xl overflow-hidden border-4 border-white shadow-md bg-white">
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.avatarWrap}>
             <Image
               source={
-                banda.profilePicture
-                  ? getImageSource(banda.profilePicture)
-                  : require("./../../assets/images/icon.png")
+                banda.fotoPerfil
+                  ? getImageSource(banda.fotoPerfil)
+                  : { uri: "https://via.placeholder.com/140" }
               }
-              className="w-full h-full"
+              style={styles.avatar}
             />
           </View>
 
-          <View className="mt-3 items-center w-full">
-            <Text className="text-lg font-bold text-center">
-              {banda.bandName}
-            </Text>
-            <Text className="text-sm text-gray-600 mt-1 mb-2">
-              {banda.genre}
-            </Text>
+          <View style={styles.titleBlock}>
+            <Text style={styles.title}>{banda.nome}</Text>
+            <Text style={styles.subtitle}>{banda.genero}</Text>
 
             <TouchableOpacity
-              className="border border-black px-6 py-2 rounded-lg bg-white mt-2"
+              style={[styles.hireButton, { backgroundColor: "#000" }]}
               activeOpacity={0.8}
               onPress={() => router.push("/editBandProfile")}
             >
-              <Text className="font-semibold text-black">Editar Perfil</Text>
+              <Text style={[styles.hireText, { color: "#fff" }]}>
+                Editar perfil
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* INFO */}
-        <View className="flex-row justify-between mx-4 mt-5">
-          <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
+        {/* Info Boxes */}
+        <View style={styles.infoRow}>
+          <View style={styles.infoCard}>
             <Ionicons name="people" size={18} />
-            <Text className="text-sm text-gray-700 mt-1">
-              {banda.members ? `${banda.members} membros` : "Carreira Solo"}
-            </Text>
+            <Text style={styles.infoText}>{banda.integrantes} membros</Text>
           </View>
 
-          <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
+          <View style={styles.infoCard}>
             <Entypo name="location-pin" size={18} />
-            <Text className="text-sm text-gray-700 mt-1">{banda.city}</Text>
+            <Text style={styles.infoText}>{banda.cidade}</Text>
           </View>
 
-          <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
+          <View style={styles.infoCard}>
             <FontAwesome name="music" size={18} />
-            <Text className="text-sm text-gray-700 mt-1" numberOfLines={1}>
-              {banda.genre}
+            <Text style={styles.infoText} numberOfLines={1}>
+              {banda.genero}
             </Text>
           </View>
         </View>
 
-        {/* DESCRIÇÃO */}
-        <Text className="text-base font-bold mt-6 mb-2 ml-4">Descrição</Text>
-        <View className="mx-4 bg-white rounded-xl p-4 border border-gray-200 shadow-md">
-          <Text className="text-sm text-gray-800 leading-5">
-            {banda.description || "Sem descrição"}
-          </Text>
+        {/* Fotos */}
+        <Text style={styles.sectionTitle}>Fotos</Text>
+        <View style={{ paddingLeft: 15 }}>
+          <FlatList
+            ref={flatRef}
+            data={banda.fotos ?? []}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(_, idx) => String(idx)}
+            renderItem={renderPhoto}
+            pagingEnabled
+            snapToAlignment="center"
+            decelerationRate="fast"
+            contentContainerStyle={{ paddingRight: 15 }}
+          />
+          <View style={styles.dots}>
+            {(banda.fotos ?? []).map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.dot,
+                  activeIndex === i ? styles.dotActive : undefined,
+                ]}
+              />
+            ))}
+          </View>
         </View>
 
-        {/* REDES SOCIAIS */}
-        <Text className="text-base font-bold mt-6 mb-2 ml-4">
-          Redes Sociais
-        </Text>
-
-        <View className="mx-4 space-y-3">
-          <TouchableOpacity
-            className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
-            disabled={!banda.instagram}
-            onPress={() => banda.instagram && Linking.openURL(banda.instagram)}
-          >
-            <FontAwesome5 name="instagram" size={22} color="#C13584" />
-            <Text className="ml-3 text-sm text-gray-800">
-              {banda.instagram || "Sem Instagram"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
-            disabled={!banda.facebook}
-            onPress={() => banda.facebook && Linking.openURL(banda.facebook)}
-          >
-            <FontAwesome5 name="facebook" size={22} color="#3b5998" />
-            <Text className="ml-3 text-sm text-gray-800">
-              {banda.facebook || "Sem Facebook"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
-            disabled={!banda.twitter}
-            onPress={() => banda.twitter && Linking.openURL(banda.twitter)}
-          >
-            <FontAwesome5 name="twitter" size={22} color="#1DA1F2" />
-            <Text className="ml-3 text-sm text-gray-800">
-              {banda.twitter || "Sem Twitter"}
-            </Text>
-          </TouchableOpacity>
+        {/* Descrição */}
+        <Text style={styles.sectionTitle}>Descrição</Text>
+        <View style={styles.card}>
+          <Text style={styles.description}>{banda.descricao}</Text>
         </View>
 
-        {/* AVALIAÇÕES */}
-        <Text className="text-base font-bold mt-6 mb-2 ml-4">Avaliações</Text>
-
-        <View className="mx-4">
-          {avaliacoes.length > 0 ? (
-            <FlatList
-              data={avaliacoes}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={renderAvaliacao}
-              scrollEnabled={false}
-            />
-          ) : (
-            <Text className="text-sm text-gray-600">
-              Nenhuma avaliação ainda.
-            </Text>
-          )}
+        {/* Músicas */}
+        <Text style={styles.sectionTitle}>Nossas músicas</Text>
+        <View style={styles.card}>
+          {banda.musicas?.map((m, index) => (
+            <View style={styles.musicRow} key={index}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
+              >
+                <Ionicons name="musical-note" size={18} />
+                <Text style={styles.musicTitle}>{m.nome}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.playBtn}
+                onPress={() => console.log("Play:", m.url)}
+              >
+                <Text style={styles.playText}>Play</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
         </View>
-
-        <View className="h-10" />
       </ScrollView>
+
+      {/* BOTÃO DE SAIR (sempre visível no fim da tela) */}
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Ionicons name="log-out-outline" size={18} color="#fff" />
+        <Text style={styles.logoutText}>Sair</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
+
+/* ===== Styles ===== */
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1, backgroundColor: "#fff" },
+  cover: { width: "100%", height: 180, backgroundColor: "#ddd" },
+  header: { marginTop: -60, paddingHorizontal: 16, alignItems: "center" },
+  avatarWrap: {
+    width: 120,
+    height: 120,
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 3,
+    borderColor: "#fff",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    backgroundColor: "#fff",
+  },
+  avatar: { width: "100%", height: "100%" },
+  titleBlock: { marginTop: 10, alignItems: "center", width: "100%" },
+  title: { fontSize: 20, fontWeight: "700", textAlign: "center" },
+  subtitle: { fontSize: 13, color: "#666", marginTop: 6, marginBottom: 10 },
+  hireButton: {
+    borderWidth: 1.2,
+    borderColor: "#000",
+    paddingVertical: 10,
+    paddingHorizontal: 28,
+    borderRadius: 8,
+    marginTop: 6,
+    backgroundColor: "#fff",
+  },
+  hireText: { color: "#000", fontWeight: "700" },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginHorizontal: 15,
+    marginTop: 18,
+  },
+  infoCard: {
+    flex: 1,
+    backgroundColor: "#fff",
+    marginHorizontal: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  infoText: { marginTop: 6, fontSize: 13, color: "#333" },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 18,
+    marginBottom: 10,
+    marginLeft: 15,
+  },
+  photo: {
+    width: width - 60,
+    height: 180,
+    borderRadius: 12,
+    marginRight: 12,
+    backgroundColor: "#eee",
+  },
+  dots: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#ddd",
+    marginHorizontal: 4,
+  },
+  dotActive: { backgroundColor: "#333", width: 18, borderRadius: 9 },
+  card: {
+    marginHorizontal: 15,
+    backgroundColor: "#f8f8f8",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  description: { fontSize: 14, color: "#333", lineHeight: 20 },
+  musicRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  musicTitle: { marginLeft: 10, fontSize: 15 },
+  playBtn: {
+    backgroundColor: "#000",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  playText: { color: "#fff", fontWeight: "700" },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#c00",
+    marginHorizontal: 50,
+    marginBottom: 20,
+    paddingVertical: 12,
+    borderRadius: 10,
+    position: "absolute",
+    bottom: 10,
+    left: 0,
+    right: 0,
+  },
+  logoutText: { color: "#fff", fontWeight: "700", marginLeft: 8, fontSize: 15 },
+});
