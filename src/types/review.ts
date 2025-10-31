@@ -8,3 +8,10 @@ export type Review = {
     name: string;
   };
 };
+
+export type ReviewCreateDto = {
+  comment?: string;
+  rating: number;
+  bandId: number;
+  userId: string;
+};
