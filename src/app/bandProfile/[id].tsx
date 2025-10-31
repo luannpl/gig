@@ -10,14 +10,19 @@ import {
   Dimensions,
   SafeAreaView,
   StatusBar,
+  Linking,
 } from "react-native";
-import { Ionicons, Entypo, FontAwesome } from "@expo/vector-icons";
+import {
+  Ionicons,
+  Entypo,
+  FontAwesome,
+  FontAwesome5,
+} from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getBandById } from "@/src/services/bandas";
+import { getBandById, getReviewsByBand } from "@/src/services/bandas";
 import { Band } from "@/src/types/band";
-
-const { width } = Dimensions.get("window");
+import { Review } from "@/src/types/review";
 
 export default function ProfileBand() {
   const router = useRouter();
@@ -48,11 +53,14 @@ export default function ProfileBand() {
   const [activeIndex, setActiveIndex] = useState(0);
   const flatRef = useRef<FlatList<any> | null>(null);
   const [user, setUser] = useState<any | null>(null);
+  const [avaliacoes, setAvaliacoes] = useState<Review[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       const bandData = await getBandById(id as string);
       setBanda(bandData);
+      const reviewsData = await getReviewsByBand(bandData.id);
+      setAvaliacoes(reviewsData);
     };
     fetchData();
   }, [id]);
@@ -81,35 +89,61 @@ export default function ProfileBand() {
     return img;
   };
 
-  const renderPhoto = ({ item }: { item: any }) => (
-    <Image
-      source={getImageSource(item)}
-      style={styles.photo}
-      resizeMode="cover"
-    />
+  const renderStars = (rating: number) => {
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      stars.push(
+        <FontAwesome
+          key={i}
+          name={i <= rating ? "star" : "star-o"}
+          size={18}
+          color={i <= rating ? "#FFD700" : "#C0C0C0"}
+          style={{ marginRight: 2 }}
+        />
+      );
+    }
+    return <View className="flex-row mt-1">{stars}</View>;
+  };
+
+  const renderAvaliacao = ({ item }: { item: any }) => (
+    <View className="bg-white border border-gray-200 rounded-xl p-4 mb-3 shadow-sm">
+      <View className="flex-row justify-between items-center">
+        <Text className="font-semibold text-gray-900">{item.user.name}</Text>
+        <Text className="text-xs text-gray-500">
+          {new Date(item.createdAt).toLocaleDateString("pt-BR")}
+        </Text>
+      </View>
+
+      {renderStars(item.rating)}
+
+      <Text className="text-sm text-gray-700 mt-2 leading-5">
+        {item.comment}
+      </Text>
+    </View>
   );
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" />
       <ScrollView
-        style={styles.container}
+        className="flex-1 bg-white"
         contentContainerStyle={{ paddingBottom: 40 }}
       >
         {/* CAPA */}
-        <View>
+        <View className="w-full h-44 justify-center items-center bg-gray-300 overflow-hidden">
           <Image
             source={
               banda.coverPicture
                 ? getImageSource(banda.coverPicture)
                 : require("./../../assets/images/icon.png")
             }
-            style={styles.cover}
+            className="w-full h-28 bg-gray-300 rounded-b-2xl"
             resizeMode="cover"
           />
 
           <TouchableOpacity
-            style={styles.backButton}
+            className="absolute top-4 left-4 bg-black bg-opacity-50 p-2 rounded-full"
+            activeOpacity={0.8}
             onPress={() => router.back()}
           >
             <Ionicons name="arrow-back" size={24} color="#fff" />
@@ -117,197 +151,126 @@ export default function ProfileBand() {
         </View>
 
         {/* HEADER */}
-        <View style={styles.header}>
-          <View style={styles.avatarWrap}>
+        <View className="-mt-16 px-4 items-center">
+          <View className="w-28 h-28 rounded-xl overflow-hidden border-4 border-white shadow-md bg-white">
             <Image
               source={
                 banda.profilePicture
                   ? getImageSource(banda.profilePicture)
                   : require("./../../assets/images/icon.png")
               }
-              style={styles.avatar}
+              className="w-full h-full"
             />
           </View>
 
-          <View style={styles.titleBlock}>
-            <Text style={styles.title}>{banda.bandName}</Text>
-            <Text style={styles.subtitle}>{banda.genre}</Text>
+          <View className="mt-3 items-center w-full">
+            <Text className="text-lg font-bold text-center">
+              {banda.bandName}
+            </Text>
+            <Text className="text-sm text-gray-600 mt-1 mb-2">
+              {banda.genre}
+            </Text>
 
             <TouchableOpacity
-              style={styles.hireButton}
+              className="border border-black px-6 py-2 rounded-lg bg-black mt-2"
               activeOpacity={0.8}
-              onPress={() => console.log("Contratar", banda.id)}
+              onPress={() => console.log("Contratar Banda")}
             >
-              <Text style={styles.hireText}>Contratar</Text>
+              <Text className="font-semibold text-white">Contratar Banda</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* INFO */}
-        <View style={styles.infoRow}>
-          <View style={styles.infoCard}>
+        <View className="flex-row justify-between mx-4 mt-5">
+          <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
             <Ionicons name="people" size={18} />
-            <Text style={styles.infoText}>
+            <Text className="text-sm text-gray-700 mt-1">
               {banda.members ? `${banda.members} membros` : "Carreira Solo"}
             </Text>
           </View>
 
-          <View style={styles.infoCard}>
+          <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
             <Entypo name="location-pin" size={18} />
-            <Text style={styles.infoText}>{banda.city}</Text>
+            <Text className="text-sm text-gray-700 mt-1">{banda.city}</Text>
           </View>
 
-          <View style={styles.infoCard}>
+          <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
             <FontAwesome name="music" size={18} />
-            <Text style={styles.infoText} numberOfLines={1}>
+            <Text className="text-sm text-gray-700 mt-1" numberOfLines={1}>
               {banda.genre}
             </Text>
           </View>
         </View>
 
         {/* DESCRIÇÃO */}
-        <Text style={styles.sectionTitle}>Descrição</Text>
-        <View style={styles.card}>
-          <Text style={styles.description}>
-            {banda.description ||
-              "Esta banda ainda não adicionou uma descrição."}
+        <Text className="text-base font-bold mt-6 mb-2 ml-4">Descrição</Text>
+        <View className="mx-4 bg-white rounded-xl p-4 border border-gray-200 shadow-md">
+          <Text className="text-sm text-gray-800 leading-5">
+            {banda.description || "Sem descrição"}
           </Text>
         </View>
 
-        {/* FOTOS */}
-        <Text style={styles.sectionTitle}>Fotos</Text>
-        <View style={{ paddingLeft: 15 }}>
-          <FlatList
-            ref={flatRef}
-            data={banda.profilePicture ? [banda.profilePicture] : []}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(_, idx) => String(idx)}
-            renderItem={renderPhoto}
-            pagingEnabled
-            snapToAlignment="center"
-            decelerationRate="fast"
-            contentContainerStyle={{ paddingRight: 15 }}
-          />
+        {/* REDES SOCIAIS */}
+        <Text className="text-base font-bold mt-6 mb-2 ml-4">
+          Redes Sociais
+        </Text>
 
-          <View style={styles.dots}>
-            {(banda.profilePicture ? [banda.profilePicture] : []).map(
-              (_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.dot,
-                    activeIndex === i ? styles.dotActive : undefined,
-                  ]}
-                />
-              )
-            )}
-          </View>
+        <View className="mx-4 space-y-3">
+          <TouchableOpacity
+            className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
+            disabled={!banda.instagram}
+            onPress={() => banda.instagram && Linking.openURL(banda.instagram)}
+          >
+            <FontAwesome5 name="instagram" size={22} color="#C13584" />
+            <Text className="ml-3 text-sm text-gray-800">
+              {banda.instagram || "Sem Instagram"}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
+            disabled={!banda.facebook}
+            onPress={() => banda.facebook && Linking.openURL(banda.facebook)}
+          >
+            <FontAwesome5 name="facebook" size={22} color="#3b5998" />
+            <Text className="ml-3 text-sm text-gray-800">
+              {banda.facebook || "Sem Facebook"}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
+            disabled={!banda.twitter}
+            onPress={() => banda.twitter && Linking.openURL(banda.twitter)}
+          >
+            <FontAwesome5 name="twitter" size={22} color="#1DA1F2" />
+            <Text className="ml-3 text-sm text-gray-800">
+              {banda.twitter || "Sem Twitter"}
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        <View style={{ height: 30 }} />
+        {/* AVALIAÇÕES */}
+        <Text className="text-base font-bold mt-6 mb-2 ml-4">Avaliações</Text>
+
+        <View className="mx-4">
+          {avaliacoes.length > 0 ? (
+            <FlatList
+              data={avaliacoes}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={renderAvaliacao}
+              scrollEnabled={false}
+            />
+          ) : (
+            <Text className="text-sm text-gray-600">
+              Nenhuma avaliação ainda.
+            </Text>
+          )}
+        </View>
+
+        <View className="h-10" />
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-/* ===== Styles ===== */
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#fff" },
-  container: { flex: 1, backgroundColor: "#fff" },
-  cover: { width: "100%", height: 180, backgroundColor: "#ddd" },
-
-  /* 🔙 Botão de voltar */
-  backButton: {
-    position: "absolute",
-    top: 16,
-    left: 16,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    padding: 8,
-    borderRadius: 50,
-  },
-
-  header: { marginTop: -60, paddingHorizontal: 16, alignItems: "center" },
-  avatarWrap: {
-    width: 120,
-    height: 120,
-    borderRadius: 12,
-    overflow: "hidden",
-    borderWidth: 3,
-    borderColor: "#fff",
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    backgroundColor: "#fff",
-  },
-  avatar: { width: "100%", height: "100%" },
-  titleBlock: { marginTop: 10, alignItems: "center", width: "100%" },
-  title: { fontSize: 20, fontWeight: "700", textAlign: "center" },
-  subtitle: { fontSize: 13, color: "#666", marginTop: 6, marginBottom: 10 },
-  hireButton: {
-    borderWidth: 1.2,
-    borderColor: "#000",
-    paddingVertical: 10,
-    paddingHorizontal: 28,
-    borderRadius: 8,
-    marginTop: 6,
-    backgroundColor: "#fff",
-  },
-  hireText: { color: "#000", fontWeight: "700" },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginHorizontal: 15,
-    marginTop: 18,
-  },
-  infoCard: {
-    flex: 1,
-    backgroundColor: "#fff",
-    marginHorizontal: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#eee",
-  },
-  infoText: { marginTop: 6, fontSize: 13, color: "#333" },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginTop: 18,
-    marginBottom: 10,
-    marginLeft: 15,
-  },
-  photo: {
-    width: width - 60,
-    height: 180,
-    borderRadius: 12,
-    marginRight: 12,
-    backgroundColor: "#eee",
-  },
-  dots: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 8,
-    marginBottom: 6,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#ddd",
-    marginHorizontal: 4,
-  },
-  dotActive: { backgroundColor: "#333", width: 18, borderRadius: 9 },
-  card: {
-    marginHorizontal: 15,
-    backgroundColor: "#f8f8f8",
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "#eee",
-  },
-  description: { fontSize: 14, color: "#333", lineHeight: 20 },
-});

@@ -17,3 +17,12 @@ export async function getBandByUserId(userId: string) {
     throw error;
   }
 }
+
+export async function getReviewsByBand(bandId: number) {
+  try {
+    const response = await api.get(`/bands/${bandId}/reviews`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+}
