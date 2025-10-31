@@ -1,5 +1,5 @@
 // Define the possible contract statuses to be used in the Contract type.
-export type ContractStatus = 'pending' | 'confirmed' | 'declined' | 'canceled';
+export type ContractStatus = "pending" | "confirmed" | "declined" | "canceled";
 
 export type Contract = {
   id: string;
@@ -44,4 +44,17 @@ export type Requester = {
   twitter: string | null;
   instagram: string | null;
   facebook: string | null;
+};
+
+export type ContractDTO = {
+  eventName: string;
+  eventDate: Date;
+  startTime: string;
+  endTime: string;
+  eventType: string;
+  budget: number;
+  additionalDetails?: string;
+  isConfirmed?: boolean;
+  requesterId: string;
+  providerId: number;
 };

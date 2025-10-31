@@ -25,6 +25,8 @@ import { getBandById, getReviewsByBand } from "@/src/services/bandas";
 import { Band } from "@/src/types/band";
 import { Review, ReviewCreateDto } from "@/src/types/review";
 import { createReview } from "@/src/services/reviews";
+import createContract, { getVenueByUserId } from "@/src/services/contracts";
+import { get } from "react-native/Libraries/TurboModule/TurboModuleRegistry";
 
 export default function ProfileBand() {
   const router = useRouter();
@@ -57,6 +59,16 @@ export default function ProfileBand() {
   const [modalVisible, setModalVisible] = useState(false);
   const [newRating, setNewRating] = useState(0);
   const [newComment, setNewComment] = useState("");
+
+  // ✅ Modal Contratação
+  const [modalContratarVisible, setModalContratarVisible] = useState(false);
+  const [eventName, setEventName] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [eventType, setEventType] = useState("");
+  const [budget, setBudget] = useState("");
+  const [additionalDetails, setAdditionalDetails] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -143,6 +155,7 @@ export default function ProfileBand() {
       );
       return;
     }
+
     const newReview: ReviewCreateDto = {
       comment: newComment,
       rating: newRating,
@@ -157,8 +170,69 @@ export default function ProfileBand() {
     setModalVisible(false);
     setNewRating(0);
     setNewComment("");
-    window.location.reload();
     Alert.alert("Sucesso", "Avaliação enviada!");
+    setAvaliacoes((prev) => [...prev, res]);
+  };
+
+  // ✅ Envio da contratação
+  const handleSubmitContratacao = async () => {
+    if (
+      !eventName.trim() ||
+      !eventDate.trim() ||
+      !startTime.trim() ||
+      !endTime.trim() ||
+      !eventType.trim() ||
+      !budget.trim()
+    ) {
+      Alert.alert("Erro", "Preencha todos os campos obrigatórios.");
+      return;
+    }
+
+    if (!user) {
+      Alert.alert(
+        "Erro",
+        "Você precisa estar logado para contratar uma banda."
+      );
+      return;
+    }
+    const venue = await getVenueByUserId(user.id);
+    if (!venue) {
+      Alert.alert(
+        "Erro",
+        "Você precisa ter um perfil de estabelecimento para contratar uma banda."
+      );
+      return;
+    }
+    const payload = {
+      eventName,
+      eventDate: new Date(eventDate),
+      startTime,
+      endTime,
+      eventType,
+      budget: parseFloat(budget),
+      additionalDetails,
+      isConfirmed: false,
+      requesterId: venue.id,
+      providerId: banda.id,
+    };
+
+    try {
+      await createContract(payload);
+      Alert.alert("Sucesso", "Pedido de contratação enviado!");
+      setModalContratarVisible(false);
+
+      // limpar campos
+      setEventName("");
+      setEventDate("");
+      setStartTime("");
+      setEndTime("");
+      setEventType("");
+      setBudget("");
+      setAdditionalDetails("");
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Erro", "Não foi possível enviar a solicitação.");
+    }
   };
 
   return (
@@ -213,7 +287,7 @@ export default function ProfileBand() {
             <TouchableOpacity
               className="border border-black px-6 py-2 rounded-lg bg-black mt-2"
               activeOpacity={0.8}
-              onPress={() => console.log("Contratar Banda")}
+              onPress={() => setModalContratarVisible(true)}
             >
               <Text className="font-semibold text-white">Contratar Banda</Text>
             </TouchableOpacity>
@@ -254,7 +328,6 @@ export default function ProfileBand() {
         <Text className="text-base font-bold mt-6 mb-2 ml-4">
           Redes Sociais
         </Text>
-
         <View className="mx-4 space-y-3">
           <TouchableOpacity
             className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
@@ -326,13 +399,9 @@ export default function ProfileBand() {
             <Text className="text-lg font-bold mb-4 text-center">
               Avaliar {banda.bandName}
             </Text>
-
-            {/* ESTRELAS */}
             <View className="items-center mb-4">
               {renderStars(newRating, setNewRating)}
             </View>
-
-            {/* COMENTÁRIO */}
             <TextInput
               placeholder="Escreva seu comentário..."
               value={newComment}
@@ -341,8 +410,6 @@ export default function ProfileBand() {
               className="border border-gray-300 rounded-lg p-3 text-sm text-gray-800 h-28"
               textAlignVertical="top"
             />
-
-            {/* BOTÕES */}
             <View className="flex-row justify-between mt-5">
               <TouchableOpacity
                 className="px-5 py-3 rounded-lg bg-gray-200"
@@ -350,7 +417,6 @@ export default function ProfileBand() {
               >
                 <Text className="font-semibold text-gray-700">Cancelar</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 className="px-5 py-3 rounded-lg bg-black"
                 onPress={handleSubmitReview}
@@ -358,6 +424,88 @@ export default function ProfileBand() {
                 <Text className="font-semibold text-white">Enviar</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ✅ MODAL DE CONTRATAÇÃO */}
+      <Modal visible={modalContratarVisible} transparent animationType="slide">
+        <View className="flex-1 bg-black bg-opacity-50 justify-center items-center px-6">
+          <View className="bg-white w-full rounded-2xl p-6 shadow-lg max-h-[90%]">
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text className="text-lg font-bold mb-4 text-center">
+                Contratar {banda.bandName}
+              </Text>
+
+              <TextInput
+                placeholder="Nome do Evento"
+                value={eventName}
+                onChangeText={setEventName}
+                className="border border-gray-300 rounded-lg p-3 text-sm mb-3"
+              />
+
+              <TextInput
+                placeholder="Data do Evento (YYYY-MM-DD)"
+                value={eventDate}
+                onChangeText={setEventDate}
+                className="border border-gray-300 rounded-lg p-3 text-sm mb-3"
+              />
+
+              <TextInput
+                placeholder="Início (ex: 18:00)"
+                value={startTime}
+                onChangeText={setStartTime}
+                className="border border-gray-300 rounded-lg p-3 text-sm flex-1 mr-2"
+              />
+              <TextInput
+                placeholder="Término (ex: 22:30)"
+                value={endTime}
+                onChangeText={setEndTime}
+                className="border border-gray-300 rounded-lg p-3 text-sm flex-1"
+              />
+
+              <TextInput
+                placeholder="Tipo de Evento"
+                value={eventType}
+                onChangeText={setEventType}
+                className="border border-gray-300 rounded-lg p-3 text-sm mt-3 mb-3"
+              />
+
+              <TextInput
+                placeholder="Orçamento (ex: 2500.75)"
+                value={budget}
+                onChangeText={setBudget}
+                keyboardType="numeric"
+                className="border border-gray-300 rounded-lg p-3 text-sm mb-3"
+              />
+
+              <TextInput
+                placeholder="Detalhes adicionais..."
+                value={additionalDetails}
+                onChangeText={setAdditionalDetails}
+                multiline
+                className="border border-gray-300 rounded-lg p-3 text-sm text-gray-800 h-28 mb-5"
+                textAlignVertical="top"
+              />
+
+              <View className="flex-row justify-between">
+                <TouchableOpacity
+                  className="px-5 py-3 rounded-lg bg-gray-200"
+                  onPress={() => setModalContratarVisible(false)}
+                >
+                  <Text className="font-semibold text-gray-700">Cancelar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  className="px-5 py-3 rounded-lg bg-black"
+                  onPress={handleSubmitContratacao}
+                >
+                  <Text className="font-semibold text-white">
+                    Enviar Pedido
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
