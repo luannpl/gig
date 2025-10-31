@@ -1,4 +1,3 @@
-// ProfileBand.tsx
 import React, { useState, useRef, useEffect } from "react";
 import {
   View,
@@ -14,7 +13,6 @@ import {
 } from "react-native";
 import { Ionicons, Entypo, FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import api from "@/src/services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width } = Dimensions.get("window");
@@ -37,7 +35,6 @@ type Band = {
 export default function ProfileBand() {
   const router = useRouter();
 
-  // --- MOCK: se usar require(...) garanta que o arquivo exista ---
   const [banda] = useState<Band>({
     id: 1,
     nome: "Cidadão Instigado",
@@ -46,8 +43,7 @@ export default function ProfileBand() {
     integrantes: 5,
     userId: "0e2d0646-ecf9-4f86-8ec3-1340430a6efa",
     descricao:
-      "O Cidadão Instigado é uma banda brasileira de rock, criada em 1996, em Fortaleza",
-    // se esses arquivos existirem, OK. Caso contrário troque por URLs ou adicione os arquivos na pasta correta
+      "O Cidadão Instigado é uma banda brasileira de rock, criada em 1996, em Fortaleza.",
     fotoCapa: require("../../assets/images/cidadaoInst4.jpg"),
     fotoPerfil: require("../../assets/images/cidadaoInstigado.jpg"),
     fotos: [
@@ -58,23 +54,19 @@ export default function ProfileBand() {
     musicas: [{ nome: "Como as Luzes" }, { nome: "Contando Estrelas" }],
   });
 
-  // helper: aceita require(...) (número) ou URL string
   const getImageSource = (img: any) => {
-    if (!img) {
-      // fallback remoto — não depende de arquivo local
+    if (!img)
       return { uri: "https://via.placeholder.com/400x200?text=Sem+imagem" };
-    }
-    if (typeof img === "number") return img; // require(...) -> número
-    if (typeof img === "string") return { uri: img }; // url
+    if (typeof img === "number") return img;
+    if (typeof img === "string") return { uri: img };
     return img;
   };
 
-  // Carousel state
   const [activeIndex, setActiveIndex] = useState(0);
   const flatRef = useRef<FlatList<any> | null>(null);
   const [user, setUser] = useState<any | null>(null);
-  // const [loading, setLoading] = useState(true);
 
+  // --- Carrega usuário logado ---
   useEffect(() => {
     const carregarUser = async () => {
       const userData = await AsyncStorage.getItem("user");
@@ -90,22 +82,19 @@ export default function ProfileBand() {
     carregarUser();
   }, []);
 
-  // if (loading) return <Text>Carregando...</Text>;
+  // --- Função de Logout ---
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("user");
+      router.replace("/(auth)/sign-in");
+    } catch (error) {
+      console.error("Erro ao fazer logout:", error);
+    }
+  };
 
-  const isOwner = user?.id === banda.userId;
-
-  //   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
-  //     if (viewableItems.length > 0) setActiveIndex(viewableItems[0].index ?? 0);
-  //   }).current;
-  //   const viewConfigRef = useRef({ viewAreaCoveragePercentThreshold: 50 });
-
-  // Render foto do carrossel — usa item corretamente
   const renderPhoto = ({ item }: { item: any }) => (
-    <Image
-      source={getImageSource(item)}
-      style={styles.photo}
-      resizeMode="cover"
-    />
+    <Image source={getImageSource(item)} style={styles.photo} resizeMode="cover" />
   );
 
   return (
@@ -113,7 +102,7 @@ export default function ProfileBand() {
       <StatusBar barStyle="dark-content" />
       <ScrollView
         style={styles.container}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
         {/* CAPA */}
         <Image
@@ -122,7 +111,7 @@ export default function ProfileBand() {
           resizeMode="cover"
         />
 
-        {/* Header - perfil flutuante */}
+        {/* Header */}
         <View style={styles.header}>
           <View style={styles.avatarWrap}>
             <Image
@@ -139,25 +128,15 @@ export default function ProfileBand() {
             <Text style={styles.title}>{banda.nome}</Text>
             <Text style={styles.subtitle}>{banda.genero}</Text>
 
-            {isOwner ? (
-              <TouchableOpacity
-                style={[styles.hireButton, { backgroundColor: "#000" }]}
-                activeOpacity={0.8}
-                onPress={() => router.push("/editBandProfile")}
-              >
-                <Text style={[styles.hireText, { color: "#fff" }]}>
-                  Editar perfil
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={styles.hireButton}
-                activeOpacity={0.8}
-                onPress={() => console.log("Contratar", banda.id)}
-              >
-                <Text style={styles.hireText}>Contratar</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={[styles.hireButton, { backgroundColor: "#000" }]}
+              activeOpacity={0.8}
+              onPress={() => router.push("/editBandProfile")}
+            >
+              <Text style={[styles.hireText, { color: "#fff" }]}>
+                Editar perfil
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -181,7 +160,7 @@ export default function ProfileBand() {
           </View>
         </View>
 
-        {/* Fotos - Carrossel */}
+        {/* Fotos */}
         <Text style={styles.sectionTitle}>Fotos</Text>
         <View style={{ paddingLeft: 15 }}>
           <FlatList
@@ -194,11 +173,8 @@ export default function ProfileBand() {
             pagingEnabled
             snapToAlignment="center"
             decelerationRate="fast"
-            // onViewableItemsChanged={onViewableItemsChanged}
-            // viewabilityConfig={viewConfigRef.current}
             contentContainerStyle={{ paddingRight: 15 }}
           />
-
           <View style={styles.dots}>
             {(banda.fotos ?? []).map((_, i) => (
               <View
@@ -238,14 +214,18 @@ export default function ProfileBand() {
             </View>
           ))}
         </View>
-
-        <View style={{ height: 30 }} />
       </ScrollView>
+
+      {/* BOTÃO DE SAIR (sempre visível no fim da tela) */}
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Ionicons name="log-out-outline" size={18} color="#fff" />
+        <Text style={styles.logoutText}>Sair</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
-/* ===== Styles (mesmos da sua versão) ===== */
+/* ===== Styles ===== */
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#fff" },
   container: { flex: 1, backgroundColor: "#fff" },
@@ -342,4 +322,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   playText: { color: "#fff", fontWeight: "700" },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#c00",
+    marginHorizontal: 50,
+    marginBottom: 20,
+    paddingVertical: 12,
+    borderRadius: 10,
+    position: "absolute",
+    bottom: 10,
+    left: 0,
+    right: 0,
+  },
+  logoutText: { color: "#fff", fontWeight: "700", marginLeft: 8, fontSize: 15 },
 });
