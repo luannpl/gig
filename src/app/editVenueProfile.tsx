@@ -19,9 +19,23 @@ import { getMe } from "../services/auth";
 
 const { width } = Dimensions.get("window");
 
-export default function EditBandProfile() {
+// FUNÇÃO PARA CONVERTER BLOB URL PARA FILE USANDO FETCH
+const blobToFile = async (blobUrl: string, fileName: string, mimeType: string) => {
+  try {
+    const response = await fetch(blobUrl);
+    const blob = await response.blob();
+    
+    // Criar um File object a partir do Blob
+    return new File([blob], fileName, { type: mimeType });
+  } catch (error) {
+    console.error('Erro ao converter blob:', error);
+    throw new Error('Falha ao processar a imagem');
+  }
+};
+
+export default function EditVenueProfile() {
   const router = useRouter();
-  const [venueId, setVenueId] = useState<number | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [venueName, setVenueName] = useState("");
   const [type, setType] = useState("");
   const [city, setCity] = useState("");
@@ -32,18 +46,19 @@ export default function EditBandProfile() {
   useEffect(() => {
     async function fetchVenue() {
       const user = await getMe((await AsyncStorage.getItem("token")) || "");
-      const userId = user.id;
-      setVenueId(userId || null);
-      if (!userId) return;
-      console.log("Buscando dados do estabelecimento com ID:", venueId);
+      const currentUserId = user.id;
+      setUserId(currentUserId || null);
+
+      if (!currentUserId) return;
+
       try {
-        const response = await api.get(`/venues/user/${userId}`);
+        const response = await api.get(`/venues/user/${currentUserId}`);
         const data = response.data;
         setVenueName(data.name || "");
         setType(data.type || "");
         setCity(data.city || "");
-        setCoverImage(data.coverImage || null);
-        setProfileImage(data.profileImage || null);
+        setCoverImage(data.coverPhoto || null);
+        setProfileImage(data.profilePhoto || null);
       } catch (error) {
         console.log("Erro ao buscar venue:", error);
         Alert.alert("Erro", "Não foi possível carregar os dados da venue.");
@@ -52,30 +67,71 @@ export default function EditBandProfile() {
     fetchVenue();
   }, []);
 
-  const pickImage = async (type: "cover" | "profile") => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
+  useEffect(() => {
+    console.log('Cover Image atualizada:', coverImage);
+    console.log('Profile Image atualizada:', profileImage);
+  }, [coverImage, profileImage]);
 
-    if (!result.canceled) {
-      if (type === "cover") {
-        setCoverImage(result.assets[0].uri);
-      } else if (type === "profile") {
-        setProfileImage(result.assets[0].uri);
+  const pickImage = async (imageType: "cover" | "profile") => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (status !== 'granted') {
+        Alert.alert('Permissão necessária', 'Precisamos de acesso à sua galeria para selecionar imagens.');
+        return;
       }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: imageType === "cover" ? [4, 3] : [1, 1],
+        quality: 0.8,
+      });
+
+      console.log('Resultado do ImagePicker:', result);
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedImage = result.assets[0];
+        console.log('Imagem selecionada:', selectedImage);
+
+        if (imageType === "cover") {
+          setCoverImage(selectedImage.uri);
+        } else if (imageType === "profile") {
+          setProfileImage(selectedImage.uri);
+        }
+      } else {
+        console.log('Seleção de imagem cancelada');
+      }
+    } catch (error) {
+      console.error('Erro ao selecionar imagem:', error);
+      Alert.alert('Erro', 'Não foi possível selecionar a imagem');
     }
   };
 
   const getToken = async () => await AsyncStorage.getItem("token");
 
+  const showSuccessNotification = () => {
+    Alert.alert(
+      "✅ Sucesso!",
+      "Alterações salvas com sucesso!",
+      [
+        {
+          text: "OK",
+          onPress: () => {
+            // Navega de volta para o perfil
+            router.navigate("/profile");
+          }
+        }
+      ]
+    );
+  };
+
   const handleSave = async () => {
-    if (!venueId) {
+    if (!userId) {
       Alert.alert("Erro", "ID do usuário não encontrado. Tente relogar.");
       return;
     }
+
     if (!venueName || !type || !city) {
       Alert.alert("Atenção", "Preencha todos os campos obrigatórios");
       return;
@@ -83,65 +139,79 @@ export default function EditBandProfile() {
 
     setLoading(true);
 
-    // 1. Criação do objeto FormData
-    const formData = new FormData();
-
-    // 2. Adiciona os campos de texto
-    formData.append("name", venueName);
-    formData.append("type", type);
-    formData.append("city", city);
-    // Adicione outros campos de texto aqui (description, contact, instagram, etc.)
-    // formData.append("description", 'Sua descrição aqui');
-
-    // 3. Adiciona a foto de Capa (coverPhoto)
-    if (coverImage && coverImage.startsWith("file://")) {
-      const filename = coverImage.split("/").pop() || "cover.jpg";
-      const fileExtension = filename.split(".").pop();
-      const mimeType = `image/${fileExtension === 'jpg' ? 'jpeg' : fileExtension}`;
-
-      formData.append("coverPhoto", {
-        uri: coverImage,
-        name: filename,
-        type: mimeType,
-      } as any);
-    }
-
-    // 4. Adiciona a foto de Perfil (profilePhoto)
-    if (profileImage && profileImage.startsWith("file://")) {
-      const filename = profileImage.split("/").pop() || "profile.jpg";
-      const fileExtension = filename.split(".").pop();
-      const mimeType = `image/${fileExtension === 'jpg' ? 'jpeg' : fileExtension}`;
-
-      formData.append("profilePhoto", {
-        uri: profileImage,
-        name: filename,
-        type: mimeType, // <--- Tipo inferido
-      } as any);
-    }
-
     try {
-      // 5. Configura a requisição PATCH para multipart/form-data
-      const token = await getToken();
+      const formData = new FormData();
 
-      const response = await api.patch(`/venues/user/${venueId}`, formData, {
+      // Adiciona os campos de texto
+      formData.append("name", venueName);
+      formData.append("type", type);
+      formData.append("city", city);
+
+      console.log('Cover Image URI:', coverImage);
+      console.log('Profile Image URI:', profileImage);
+
+      // ADICIONA AS IMAGENS
+      if (coverImage && coverImage.startsWith('blob:')) {
+        try {
+          const coverFile = await blobToFile(coverImage, `cover_${Date.now()}.jpg`, 'image/jpeg');
+          formData.append("coverPhoto", coverFile);
+          console.log('Cover File adicionado ao FormData');
+        } catch (error) {
+          console.error('Erro ao processar cover image:', error);
+        }
+      }
+
+      if (profileImage && profileImage.startsWith('blob:')) {
+        try {
+          const profileFile = await blobToFile(profileImage, `profile_${Date.now()}.jpg`, 'image/jpeg');
+          formData.append("profilePhoto", profileFile);
+          console.log('Profile File adicionado ao FormData');
+        } catch (error) {
+          console.error('Erro ao processar profile image:', error);
+        }
+      }
+
+      const token = await getToken();
+      
+      if (!token) {
+        Alert.alert("Erro", "Token de autenticação não encontrado");
+        return;
+      }
+
+      console.log('Enviando FormData...');
+
+      // Fazer a requisição
+      const response = await api.patch(`/venues/user/${userId}`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
-          // O RN/Axios geralmente define o Content-Type para 'multipart/form-data' 
-          // automaticamente ao enviar um objeto FormData.
           "Content-Type": "multipart/form-data",
         },
+        timeout: 30000,
       });
 
-      Alert.alert("Sucesso", "Perfil do Estabelecimento atualizado com sucesso!")
-      router.back();
-    } catch (error) {
-      const isAxiosError = (err: any): err is { response: { data: { message: string } } } => !!err.response;
-      console.log("Erro ao atualizar Estabelecimento:", isAxiosError(error) ? error.response?.data : error);
-      const errorMessage = isAxiosError(error)
-        ? (error.response?.data?.message || "Erro desconhecido da API")
-        : "Não foi possível atualizar o perfil do estabelecimento. Verifique a conexão.";
+      console.log('Resposta do servidor:', response.data);
 
-      Alert.alert("Erro", errorMessage);
+      // MOSTRA NOTIFICAÇÃO DE SUCESSO E VOLTA PARA O PERFIL
+      showSuccessNotification();
+
+    } catch (error: any) {
+      console.log("ERRO DETALHADO:");
+      console.log("Mensagem:", error.message);
+      
+      if (error.response) {
+        console.log("Status:", error.response.status);
+        console.log("Data:", error.response.data);
+        
+        Alert.alert(
+          "Erro do Servidor", 
+          error.response.data?.message || `Erro ${error.response.status}`
+        );
+      } else if (error.request) {
+        console.log("Request error:", error.request);
+        Alert.alert("Erro de Conexão", "Não foi possível conectar ao servidor.");
+      } else {
+        Alert.alert("Erro", error.message || "Erro desconhecido");
+      }
     } finally {
       setLoading(false);
     }
@@ -210,7 +280,7 @@ export default function EditBandProfile() {
 
         {/* Form Card */}
         <View style={styles.formCard}>
-          {/* Vanue Name */}
+          {/* Venue Name */}
           <View style={styles.section}>
             <Text style={styles.label}>Nome do Estabelecimento</Text>
             <TextInput

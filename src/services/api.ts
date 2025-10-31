@@ -7,10 +7,6 @@ const { apiUrl, env } = Constants.expoConfig?.extra as {
   env: string;
 };
 
-// Log para debug - remova depois de confirmar que está correto
-console.log("🔧 API URL configurada:", apiUrl);
-console.log("🌍 Ambiente:", env);
-
 const api = axios.create({
   baseURL: apiUrl || "http://localhost:5500",
   headers: {
