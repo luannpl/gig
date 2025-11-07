@@ -9,6 +9,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Link, router } from "expo-router";
@@ -41,79 +42,86 @@ export default function SignIn() {
     login({ email, password });
   };
 
+  const { width } = Dimensions.get("window");
+  const isWeb = Platform.OS === "web";
+  const isLargeScreen = width > 768;
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <View style={styles.content}>
-          {/* Logo Container */}
-          <View style={styles.logoContainer}>
-            <View style={styles.logoBox}>
-              <Text style={styles.logoText}>gig</Text>
+        <View style={[styles.content, isWeb && isLargeScreen && styles.contentWeb]}>
+          {/* Card Container for Web */}
+          <View style={[styles.formContainer, isWeb && isLargeScreen && styles.formCard]}>
+            {/* Logo Container */}
+            <View style={styles.logoContainer}>
+              <View style={styles.logoBox}>
+                <Text style={styles.logoText}>gig</Text>
+              </View>
             </View>
-          </View>
 
-          {/* Login Title */}
-          <Text style={styles.title}>login</Text>
-
-          {/* Input Fields */}
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Digite seu email"
-              placeholderTextColor="#999"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Digite sua senha"
-              placeholderTextColor="#999"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoComplete="password"
-            />
-          </View>
-
-          {/* Login Button */}
-          <TouchableOpacity
-            style={[
-              styles.loginButton,
-              isPending && styles.loginButtonDisabled,
-            ]}
-            onPress={handleLogin}
-            disabled={isPending}
-          >
-            <Text style={styles.loginButtonText}>
-              {isPending ? "Entrando..." : "Entrar"}
+            {/* Login Title */}
+            <Text style={styles.title}>login</Text>
+            <Text style={[styles.subtitle, isWeb && isLargeScreen && styles.subtitleWeb]}>
+              Entre com sua conta para continuar
             </Text>
-          </TouchableOpacity>
 
-          {/* Forgot Password Link */}
-          <View style={styles.forgotPassword}>
-            <Link href="/(auth)/forgot-password" asChild>
+            {/* Input Fields */}
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={[styles.input, isWeb && isLargeScreen && styles.inputWeb]}
+                placeholder="Digite seu email"
+                placeholderTextColor="#999"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+              />
+
+              <TextInput
+                style={[styles.input, isWeb && isLargeScreen && styles.inputWeb]}
+                placeholder="Digite sua senha"
+                placeholderTextColor="#999"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                autoComplete="password"
+              />
+            </View>
+
+            {/* Login Button */}
+            <TouchableOpacity
+              style={[
+                styles.loginButton,
+                isPending && styles.loginButtonDisabled,
+                isWeb && isLargeScreen && styles.loginButtonWeb,
+              ]}
+              onPress={handleLogin}
+              disabled={isPending}
+            >
+              <Text style={styles.loginButtonText}>
+                {isPending ? "Entrando..." : "Entrar"}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Forgot Password Link */}
+            <View style={styles.forgotPassword}>
               <TouchableOpacity>
                 <Text style={styles.forgotPasswordText}>Esqueceu a senha?</Text>
               </TouchableOpacity>
-            </Link>
-          </View>
+            </View>
 
-          {/* Sign Up Link */}
-          <View style={styles.signupContainer}>
-            <Text style={styles.signupText}>Não tem conta? </Text>
-            <Link href="/(auth)/sign-up" asChild>
+            {/* Sign Up Link */}
+            <View style={styles.signupContainer}>
+              <Text style={styles.signupText}>Não tem conta? </Text>
               <TouchableOpacity>
                 <Text style={styles.signupLink}>Cadastre-se</Text>
               </TouchableOpacity>
-            </Link>
+            </View>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -135,9 +143,29 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingTop: 50,
   },
+  contentWeb: {
+    alignItems: "center",
+    paddingHorizontal: 20,
+    backgroundColor: "#f9fafb",
+  },
+  formContainer: {
+    width: "100%",
+  },
+  formCard: {
+    maxWidth: 480,
+    width: "100%",
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 48,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
   logoContainer: {
     alignItems: "center",
-    marginBottom: 60,
+    marginBottom: 40,
   },
   logoBox: {
     width: 120,
@@ -160,10 +188,20 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#000",
     textAlign: "center",
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 32,
+  },
+  subtitleWeb: {
+    fontSize: 16,
     marginBottom: 40,
   },
   inputContainer: {
-    marginBottom: 30,
+    marginBottom: 24,
   },
   input: {
     borderWidth: 1,
@@ -176,6 +214,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#fafafa",
     color: "#000",
   },
+  inputWeb: {
+    paddingVertical: 18,
+    fontSize: 16,
+  },
   loginButton: {
     backgroundColor: "#2C2B2B",
     borderRadius: 12,
@@ -183,8 +225,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
+  loginButtonWeb: {
+    paddingVertical: 18,
+    cursor: "pointer",
+  },
   loginButtonDisabled: {
     backgroundColor: "#999",
+    opacity: 0.7,
   },
   loginButtonText: {
     color: "#ffffff",
@@ -193,7 +240,7 @@ const styles = StyleSheet.create({
   },
   forgotPassword: {
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 24,
   },
   forgotPasswordText: {
     color: "#666",
