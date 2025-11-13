@@ -129,6 +129,7 @@ const normalizeImageUrl = (url: string | null | undefined) => {
   return null;
 };
 
+
 export default function ProfileVenue(): JSX.Element {
   const [venueData, setVenueData] = useState<VenueDetails | null>(null);
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -139,6 +140,16 @@ export default function ProfileVenue(): JSX.Element {
   const [showDropdown, setShowDropdown] = useState(false);
 
   const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("user");
+      router.replace("/(auth)/sign-in");
+    } catch (error) {
+      console.error("Erro ao fazer logout:", error);
+    }
+  };
 
   // Função para verificar se o contrato está válido (confirmado e dentro do prazo)
   const isValidContract = (contract: Contract): boolean => {
@@ -174,9 +185,9 @@ export default function ProfileVenue(): JSX.Element {
   const fetchContracts = async (venueId: string, token: string) => {
     try {
       setContractsLoading(true);
-      
+
       const url = `/contract/venue/${venueId}`;
-      
+
       const response = await api.get(url, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -199,52 +210,6 @@ export default function ProfileVenue(): JSX.Element {
       }
     } finally {
       setContractsLoading(false);
-    }
-  };
-
-  // Função para cancelar contrato
-  const handleCancelContract = async (contractId: string) => {
-    try {
-      const token = await AsyncStorage.getItem("token");
-      if (!token) {
-        Alert.alert("Erro", "Token não encontrado");
-        return;
-      }
-
-      Alert.alert(
-        "Cancelar Contrato",
-        "Tem certeza que deseja cancelar este contrato?",
-        [
-          { text: "Não", style: "cancel" },
-          {
-            text: "Sim",
-            onPress: async () => {
-              try {
-                await api.patch(`/contract/${contractId}/cancel`, {}, {
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                  },
-                });
-
-                // Atualizar a lista de contratos
-                if (venueData) {
-                  await fetchContracts(venueData.id, token);
-                }
-
-                Alert.alert("Sucesso", "Contrato cancelado com sucesso!");
-              } catch (error: any) {
-                console.error('Erro ao cancelar contrato:', error);
-                Alert.alert(
-                  "Erro",
-                  error.response?.data?.message || "Erro ao cancelar contrato"
-                );
-              }
-            }
-          }
-        ]
-      );
-    } catch (error) {
-      console.error('Erro ao cancelar contrato:', error);
     }
   };
 
@@ -320,22 +285,6 @@ export default function ProfileVenue(): JSX.Element {
   // Função para formatar hora (remover segundos)
   const formatTime = (timeString: string) => {
     return timeString.substring(0, 5);
-  };
-
-  // Função para obter cor do status
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'declined':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'canceled':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
   };
 
   // Função para obter texto do status
@@ -431,17 +380,6 @@ export default function ProfileVenue(): JSX.Element {
     );
   }
 
-  const handleScroll = (
-    event: NativeSyntheticEvent<NativeScrollEvent>
-  ): void => {
-    const contentOffsetX = event.nativeEvent.contentOffset.x;
-    const currentIndex = Math.round(contentOffsetX / ITEM_FULL_WIDTH);
-
-    if (currentIndex !== activeIndex) {
-      setActiveIndex(currentIndex);
-    }
-  };
-
   return (
     <View className="flex-1 bg-white">
       <Image
@@ -492,6 +430,7 @@ export default function ProfileVenue(): JSX.Element {
             onPress={() => {
               console.log("Sair");
               setShowDropdown(false);
+              handleLogout();
             }}
           >
             <LogOut size={18} color="#4B5563" />
@@ -545,7 +484,7 @@ export default function ProfileVenue(): JSX.Element {
           <View className="space-y-3 pt-4 border border-gray-200 rounded-lg p-4">
             <View className="flex-row justify-between items-center">
               <Text className="text-xl font-bold text-gray-900">
-                Eventos (Debug)
+                Eventos
               </Text>
               <Text className="text-sm text-gray-500">
                 {contracts.length} total / {validContracts.length} válidos
@@ -572,8 +511,8 @@ export default function ProfileVenue(): JSX.Element {
                           {contract.eventName}
                         </Text>
                         <View className={`px-2 py-1 rounded-full ${contract.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                            contract.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-gray-100 text-gray-800'
+                          contract.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
                           }`}>
                           <Text className="text-xs font-medium">
                             {getStatusText(contract.status)} {isValid ? '✓' : '✗'}
@@ -586,9 +525,6 @@ export default function ProfileVenue(): JSX.Element {
                       </Text>
                       <Text className="text-sm text-gray-600">
                         Banda: {contract.provider.bandName} | R$ {parseFloat(contract.budget).toFixed(2)}
-                      </Text>
-                      <Text className="text-xs text-gray-500 mt-1">
-                        ID: {contract.id}
                       </Text>
                     </View>
                   );
