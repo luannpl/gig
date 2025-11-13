@@ -65,17 +65,50 @@ interface Comment {
 // --- Funções Auxiliares ---
 
 const timeAgo = (dateString: string): string => {
-  const date = new Date(dateString);
-  const now = new Date();
-  const seconds = Math.round((now.getTime() - date.getTime()) / 1000);
-  const minutes = Math.round(seconds / 60);
-  const hours = Math.round(minutes / 60);
-  const days = Math.round(hours / 24);
+  try {
+    // Garante que a data está em UTC
+    let date: Date;
+    
+    if (dateString.includes('T') && !dateString.endsWith('Z')) {
+      // Se tem T mas não termina com Z, adiciona Z para forçar UTC
+      date = new Date(dateString + 'Z');
+    } else {
+      date = new Date(dateString);
+    }
 
-  if (seconds < 60) return `${seconds}s atrás`;
-  if (minutes < 60) return `${minutes}m atrás`;
-  if (hours < 24) return `${hours}h atrás`;
-  return `${days}d atrás`;
+    // Verifica se a data é válida
+    if (isNaN(date.getTime())) {
+      console.warn('Data inválida no timeAgo:', dateString);
+      return 'Há algum tempo';
+    }
+
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+
+    // Se for negativo (problema de timezone), usa valor absoluto
+    const absoluteDiff = Math.abs(diffInMs);
+    
+    const seconds = Math.floor(absoluteDiff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (seconds < 60) {
+      return `${seconds}s atrás`;
+    } else if (minutes < 60) {
+      return `${minutes}m atrás`;
+    } else if (hours < 24) {
+      return `${hours}h atrás`;
+    } else if (days < 30) {
+      return `${days}d atrás`;
+    } else {
+      const months = Math.floor(days / 30);
+      return `${months}mes${months !== 1 ? 'es' : ''} atrás`;
+    }
+  } catch (error) {
+    console.error('Erro no timeAgo:', error);
+    return 'Há algum tempo';
+  }
 };
 
 // --- Componente Modal de Comentários ---
@@ -112,20 +145,6 @@ const CommentsModal: React.FC<CommentsModalProps> = ({
     } finally {
       setIsLoadingComments(false);
     }
-  };
-
-  const timeAgo = (dateString: string): string => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const seconds = Math.round((now.getTime() - date.getTime()) / 1000);
-    const minutes = Math.round(seconds / 60);
-    const hours = Math.round(minutes / 60);
-    const days = Math.round(hours / 24);
-
-    if (seconds < 60) return `${seconds}s atrás`;
-    if (minutes < 60) return `${minutes}m atrás`;
-    if (hours < 24) return `${hours}h atrás`;
-    return `${days}d atrás`;
   };
 
   return (

@@ -397,14 +397,7 @@ export default function ProfileVenue(): JSX.Element {
           transition={300}
         />
       </View>
-
-      <TouchableOpacity
-        className="absolute top-10 left-4 p-2 bg-white/70 rounded-full z-20"
-        onPress={() => router.back()}
-      >
-        <ArrowLeft size={24} color="#000" />
-      </TouchableOpacity>
-
+      
       <TouchableOpacity
         className="absolute top-10 right-4 p-2 bg-white/70 rounded-full z-20"
         onPress={() => setShowDropdown(!showDropdown)}
