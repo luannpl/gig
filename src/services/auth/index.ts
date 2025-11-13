@@ -1,6 +1,96 @@
 import { BandSignUpData, LoginData, VenueSignUpData } from "@/src/types/auth";
 import api from "../api";
 
+export interface Venue {
+  id: string;
+  name: string;
+  type: string;
+  city: string;
+  address: string | null;
+  description: string | null;
+  contact: string | null;
+  profilePhoto: string | null;
+  coverPhoto: string | null;
+  instagram: string | null;
+  facebook: string | null;
+  twitter: string | null;
+  cep: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VenuesResponse {
+  data: Venue[];
+  total: number;
+  page: number;
+  lastPage: number;
+}
+
+/**
+ * Busca um estabelecimento por ID
+ */
+export async function getVenueById(id: string): Promise<Venue> {
+  try {
+    const response = await api.get(`/venues/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao buscar estabelecimento:", error);
+    throw error;
+  }
+}
+
+/**
+ * Lista todos os estabelecimentos com paginação
+ */
+export async function getVenues(page: number = 1, limit: number = 20): Promise<VenuesResponse> {
+  try {
+    const response = await api.get(`/venues?page=${page}&limit=${limit}`);
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao listar estabelecimentos:", error);
+    throw error;
+  }
+}
+
+/**
+ * Busca estabelecimentos por nome
+ */
+export async function searchVenues(name: string, page: number = 1, limit: number = 20): Promise<VenuesResponse> {
+  try {
+    const response = await api.get(`/venues/pesquisa?name=${encodeURIComponent(name)}&page=${page}&limit=${limit}`);
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao pesquisar estabelecimentos:", error);
+    throw error;
+  }
+}
+
+/**
+ * Busca estabelecimentos por cidade
+ */
+export async function getVenuesByCity(city: string): Promise<Venue[]> {
+  try {
+    const response = await api.get(`/venues/city/${encodeURIComponent(city)}`);
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao buscar estabelecimentos por cidade:", error);
+    throw error;
+  }
+}
+
+/**
+ * Busca estabelecimentos por tipo (ex: bar, restaurante, casa de shows)
+ */
+export async function getVenuesByType(type: string): Promise<Venue[]> {
+  try {
+    const response = await api.get(`/venues/type/${encodeURIComponent(type)}`);
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao buscar estabelecimentos por tipo:", error);
+    throw error;
+  }
+}
+
 export async function bandSignUp(data: BandSignUpData) {
   try {
     const response = await api.post("/users", data);
