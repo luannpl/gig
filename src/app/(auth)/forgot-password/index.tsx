@@ -9,12 +9,16 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Link, router } from 'expo-router';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { width } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
+  const contentWidth = isWeb ? (width > 800 ? 500 : '100%') : '100%';
 
   const handleResetPassword = async () => {
     if (!email.trim()) {
@@ -53,7 +57,7 @@ export default function ForgotPassword() {
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.content}>
+        <View style={[styles.content, { width: contentWidth, alignSelf: 'center' }]}>
           {/* Logo */}
           <View style={styles.logoContainer}>
             <View style={styles.logoBox}>
