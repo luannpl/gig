@@ -7,6 +7,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  useWindowDimensions,
+  Platform, // Importar Platform para estilos específicos de plataforma
 } from "react-native";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,6 +16,7 @@ import { useQuery } from "@tanstack/react-query";
 import api from "@/src/services/api";
 import { router } from "expo-router";
 
+// Tipos
 // Tipos
 interface Band {
   id: number;
@@ -43,6 +46,10 @@ interface SearchResponse {
   total: number;
 }
 
+// Constantes para breakpoints
+const BREAKPOINT_TABLET = 768;
+const BREAKPOINT_DESKTOP = 1024;
+
 export default function Search() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -57,12 +64,17 @@ export default function Search() {
     return () => clearTimeout(timer);
   };
 
-  // Query combinada
+  // Lógica de responsividade
+  const { width } = useWindowDimensions();
+  const isTablet = width >= BREAKPOINT_TABLET;
+  const isDesktop = width >= BREAKPOINT_DESKTOP;
+
+  // Query combinada (mantida a mesma)
   const { data, isLoading, isError, error } = useQuery<SearchResponse>({
     queryKey: ["search", debouncedSearch, filterType],
     queryFn: async () => {
       const searchTerm = debouncedSearch.trim();
-      
+
       let bands: Band[] = [];
       let venues: Venue[] = [];
 
@@ -73,7 +85,10 @@ export default function Search() {
             ? `/bands/pesquisa?name=${encodeURIComponent(searchTerm)}&page=1&limit=20`
             : `/bands?page=1&limit=20`;
           const bandResponse = await api.get(bandEndpoint);
-          bands = bandResponse.data.data.map((b: any) => ({ ...b, type: "band" }));
+          bands = bandResponse.data.data.map((b: any) => ({
+            ...b,
+            type: "band",
+          }));
         } catch (error) {
           console.error("Erro ao buscar bandas:", error);
         }
@@ -86,7 +101,10 @@ export default function Search() {
             ? `/venues/pesquisa?name=${encodeURIComponent(searchTerm)}&page=1&limit=20`
             : `/venues?page=1&limit=20`;
           const venueResponse = await api.get(venueEndpoint);
-          venues = venueResponse.data.data.map((v: any) => ({ ...v, itemType: "venue" }));
+          venues = venueResponse.data.data.map((v: any) => ({
+            ...v,
+            itemType: "venue",
+          }));
         } catch (error) {
           console.error("Erro ao buscar estabelecimentos:", error);
         }
@@ -107,16 +125,30 @@ export default function Search() {
     ...(data?.venues || []),
   ];
 
+  // Determina o número de colunas para a FlatList
+  const numColumns = isDesktop ? 3 : isTablet ? 2 : 1;
+
   const renderItem = ({ item }: { item: SearchItem }) => {
     const isBand = "bandName" in item;
-    
+
+    // Estilo do cartão ajustado para o layout de colunas
+    const cardStyle = [
+      styles.card,
+      isTablet && {
+        width: isDesktop ? width / 3 - 24 : width / 2 - 24,
+        marginHorizontal: 8,
+      },
+      !isTablet && { marginHorizontal: 0 }, // No mobile, remove o marginHorizontal se for aplicado no FlatList
+    ];
+
     if (isBand) {
       return (
         <TouchableOpacity
           onPress={() => router.push(`/bandProfile/${item.id}`)}
           activeOpacity={0.9}
+          style={cardStyle} // Aplica o estilo do cartão aqui
         >
-          <View style={styles.card}>
+          <View>
             <Image
               source={{
                 uri:
@@ -155,8 +187,9 @@ export default function Search() {
         <TouchableOpacity
           onPress={() => router.push(`/venueProfile/${venue.id}`)}
           activeOpacity={0.9}
+          style={cardStyle} // Aplica o estilo do cartão aqui
         >
-          <View style={styles.card}>
+          <View>
             <Image
               source={{
                 uri:
@@ -239,40 +272,69 @@ export default function Search() {
       </View>
 
       {/* Filtros */}
-      <View style={styles.filterContainer}>
+      <View
+        style={[
+          styles.filterContainer,
+          isTablet && styles.filterContainerTablet,
+        ]}
+      >
         <TouchableOpacity
-          style={[styles.filterButton, filterType === "all" && styles.filterButtonActive]}
+          style={[
+            styles.filterButton,
+            filterType === "all" && styles.filterButtonActive,
+          ]}
           onPress={() => setFilterType("all")}
         >
-          <Text style={[styles.filterText, filterType === "all" && styles.filterTextActive]}>
+          <Text
+            style={[
+              styles.filterText,
+              filterType === "all" && styles.filterTextActive,
+            ]}
+          >
             Todos
           </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
-          style={[styles.filterButton, filterType === "band" && styles.filterButtonActive]}
+          style={[
+            styles.filterButton,
+            filterType === "band" && styles.filterButtonActive,
+          ]}
           onPress={() => setFilterType("band")}
         >
-          <Ionicons 
-            name="musical-notes" 
-            size={16} 
-            color={filterType === "band" ? "#FFFFFF" : "#6B7280"} 
+          <Ionicons
+            name="musical-notes"
+            size={16}
+            color={filterType === "band" ? "#FFFFFF" : "#6B7280"}
           />
-          <Text style={[styles.filterText, filterType === "band" && styles.filterTextActive]}>
+          <Text
+            style={[
+              styles.filterText,
+              filterType === "band" && styles.filterTextActive,
+            ]}
+          >
             Bandas
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.filterButton, filterType === "venue" && styles.filterButtonActive]}
+          style={[
+            styles.filterButton,
+            filterType === "venue" && styles.filterButtonActive,
+          ]}
           onPress={() => setFilterType("venue")}
         >
-          <Ionicons 
-            name="business" 
-            size={16} 
-            color={filterType === "venue" ? "#FFFFFF" : "#6B7280"} 
+          <Ionicons
+            name="business"
+            size={16}
+            color={filterType === "venue" ? "#FFFFFF" : "#6B7280"}
           />
-          <Text style={[styles.filterText, filterType === "venue" && styles.filterTextActive]}>
+          <Text
+            style={[
+              styles.filterText,
+              filterType === "venue" && styles.filterTextActive,
+            ]}
+          >
             Estabelecimentos
           </Text>
         </TouchableOpacity>
@@ -298,11 +360,16 @@ export default function Search() {
       {!isLoading && !isError && (
         <FlatList
           data={combinedResults}
-          keyExtractor={(item, index) => 
+          keyExtractor={(item, index) =>
             "bandName" in item ? `band-${item.id}` : `venue-${item.id}`
           }
           renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            isTablet && styles.listContentTablet, // Estilo para layout de colunas
+          ]}
+          numColumns={numColumns} // Adiciona o número de colunas
+          columnWrapperStyle={isTablet ? styles.columnWrapper : undefined} // Estilo para espaçamento entre colunas
           ListEmptyComponent={renderEmptyState}
           showsVerticalScrollIndicator={false}
         />
@@ -313,7 +380,6 @@ export default function Search() {
         <View style={styles.resultsInfo}>
           <Text style={styles.resultsText}>
             {data.total} {data.total === 1 ? "resultado" : "resultados"}
-            {filterType === "all" && ` (${data.bands.length} bandas, ${data.venues.length} estabelecimentos)`}
           </Text>
         </View>
       )}
@@ -328,7 +394,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: "#F3F4F6",
-    paddingVertical: 24,
+    paddingVertical: Platform.OS === "ios" ? 48 : 24, // Ajuste para iOS/Android
     paddingHorizontal: 16,
     alignItems: "center",
     borderBottomWidth: 1,
@@ -363,6 +429,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 8,
   },
+  filterContainerTablet: {
+    justifyContent: "center", // Centraliza os filtros em telas maiores
+  },
   filterButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -387,6 +456,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 80,
   },
+  listContentTablet: {
+    paddingHorizontal: 8, // Ajusta o padding para compensar o marginHorizontal dos cards
+  },
+  columnWrapper: {
+    justifyContent: "space-between", // Distribui o espaço entre as colunas
+    marginBottom: 16, // Espaçamento entre as linhas
+  },
   card: {
     backgroundColor: "#111827",
     borderRadius: 16,
@@ -397,6 +473,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+    flex: 1, // Adiciona flex: 1 para funcionar com numColumns
   },
   image: {
     width: "100%",
