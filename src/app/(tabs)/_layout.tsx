@@ -1,5 +1,6 @@
 import { router, Tabs } from "expo-router";
-import { FontAwesome } from "@expo/vector-icons";
+import { AntDesign, FontAwesome } from "@expo/vector-icons";
+import { View } from "react-native";
 import { useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getMe } from "@/src/services/auth";
@@ -26,7 +27,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: { backgroundColor: "#2C2B2B" },
-        tabBarActiveTintColor: "#fff",
+        tabBarActiveTintColor: "#bfdbfe",
         tabBarInactiveTintColor: "#fff",
         tabBarLabelStyle: { color: "#fff" },
       }}
@@ -34,40 +35,97 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          tabBarIcon: ({ color }) => (
-            <FontAwesome size={28} name="home" color={color} />
+          title: "Home",
+          tabBarIcon: ({ color, focused }) => (
+            <View
+              style={{
+                alignItems: "center",
+                justifyContent: "center",
+                transform: [{ scale: focused ? 1.1 : 1 }],
+              }}
+            >
+              <FontAwesome size={focused ? 30 : 26} name="home" color={color} />
+            </View>
           ),
         }}
       />
       <Tabs.Screen
         name="search"
         options={{
-          tabBarIcon: ({ color }) => (
-            <FontAwesome size={28} name="search" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="camera"
-        options={{
-          tabBarIcon: ({ color }) => (
-            <FontAwesome size={28} name="camera" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="trading"
-        options={{
-          tabBarIcon: ({ color }) => (
-            <FontAwesome size={28} name="dollar" color={color} />
+          title: "Busca",
+          tabBarIcon: ({ color, focused }) => (
+            <View
+              style={{
+                alignItems: "center",
+                justifyContent: "center",
+                transform: [{ scale: focused ? 1.1 : 1 }],
+              }}
+            >
+              <FontAwesome
+                size={focused ? 30 : 26}
+                name="search"
+                color={color}
+              />
+            </View>
           ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          tabBarIcon: ({ color }) => (
-            <FontAwesome size={28} name="user" color={color} />
+          title: "Perfil",
+          tabBarIcon: ({ color, focused }) => (
+            <View
+              style={{
+                alignItems: "center",
+                justifyContent: "center",
+                transform: [{ scale: focused ? 1.1 : 1 }],
+              }}
+            >
+              <FontAwesome size={focused ? 30 : 26} name="user" color={color} />
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="trading"
+        options={{
+          title: "Propostas",
+          tabBarIcon: ({ color, focused }) => (
+            <View
+              style={{
+                alignItems: "center",
+                justifyContent: "center",
+                transform: [{ scale: focused ? 1.1 : 1 }],
+              }}
+            >
+              <FontAwesome
+                size={focused ? 30 : 26}
+                name="dollar"
+                color={color}
+              />
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="calendar"
+        options={{
+          title: "Agenda",
+          tabBarIcon: ({ color, focused }) => (
+            <View
+              style={{
+                alignItems: "center",
+                justifyContent: "center",
+                transform: [{ scale: focused ? 1.1 : 1 }],
+              }}
+            >
+              <AntDesign
+                size={focused ? 30 : 26}
+                name="calendar"
+                color={color}
+              />
+            </View>
           ),
         }}
       />
