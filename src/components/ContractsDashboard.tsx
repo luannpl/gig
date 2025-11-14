@@ -1,5 +1,12 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, Dimensions } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Dimensions,
+  useWindowDimensions,
+} from "react-native";
 import { Contract } from "@/src/types/contracts";
 import { BarChart } from "react-native-chart-kit"; // ChartKit para barras
 import PieChartCustom from "./charts/PieChart";
@@ -31,6 +38,8 @@ const chartConfig = {
 };
 
 const ContractsDashboard: React.FC<DashboardProps> = ({ allContracts }) => {
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 1024;
   const {
     totalRevenue,
     pendingContracts,
@@ -150,10 +159,16 @@ const ContractsDashboard: React.FC<DashboardProps> = ({ allContracts }) => {
     );
   }
 
+  // Configuração de largura do gráfico de barras com rolagem horizontal
+  const monthsCount = barChartData.labels.length;
+  const perMonthWidth = isDesktop ? 80 : 60; // largura desejada por mês (desktop maior)
+  const extraPadding = 40; // espaço adicional interno
+  // largura real do canvas do gráfico; se ficar menor que a largura visível do card, a rolagem não aparece
+  const barChartScrollableWidth = monthsCount * perMonthWidth + extraPadding;
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       {/* --- KPIs --- */}
-      <View style={{ marginBottom: 20 }}>
+      <View style={[styles.kpiWrapper, isDesktop && styles.kpiRow]}>
         <View style={styles.kpiCard}>
           <Text style={styles.kpiValue}>
             {totalRevenue.toLocaleString("pt-BR", {
@@ -175,48 +190,99 @@ const ContractsDashboard: React.FC<DashboardProps> = ({ allContracts }) => {
         </View>
       </View>
 
-      {/* --- Gráfico de Pizza --- */}
-      {pieChartData.length > 0 && (
-        <View style={styles.chartContainer}>
-          <Text style={styles.chartTitle}>Status dos Contratos</Text>
-          <PieChartCustom data={pieChartData} size={200} />
-          {/* --- LEGENDA ADICIONADA --- */}
-          <View style={styles.legendContainer}>
-            {pieChartData.map((item) => (
-              <View key={item.label} style={styles.legendItem}>
-                <View
-                  style={[
-                    styles.legendColorBox,
-                    { backgroundColor: item.color },
-                  ]}
-                />
-                <Text
-                  style={styles.legendText}
-                >{`${item.label} (${item.value})`}</Text>
+      {isDesktop ? (
+        <View style={styles.chartsRow}>
+          {pieChartData.length > 0 && (
+            <View style={[styles.chartContainer, styles.chartBox]}>
+              <Text style={styles.chartTitle}>Status dos Contratos</Text>
+              <PieChartCustom data={pieChartData} size={200} />
+              <View style={styles.legendContainer}>
+                {pieChartData.map((item) => (
+                  <View key={item.label} style={styles.legendItem}>
+                    <View
+                      style={[
+                        styles.legendColorBox,
+                        { backgroundColor: item.color },
+                      ]}
+                    />
+                    <Text
+                      style={styles.legendText}
+                    >{`${item.label} (${item.value})`}</Text>
+                  </View>
+                ))}
               </View>
-            ))}
+            </View>
+          )}
+          <View style={[styles.chartContainerBar, styles.chartBox]}>
+            <Text style={styles.chartTitle}>Receita por Mês</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator
+              style={{ width: "100%" }}
+            >
+              <BarChart
+                data={barChartData}
+                width={barChartScrollableWidth}
+                height={250}
+                chartConfig={chartConfig}
+                fromZero
+                yAxisLabel="R$"
+                yAxisSuffix=""
+                showValuesOnTopOfBars
+              />
+            </ScrollView>
           </View>
-          {/* --- FIM DA LEGENDA --- */}
         </View>
+      ) : (
+        <>
+          {/* --- Gráfico de Pizza --- */}
+          {pieChartData.length > 0 && (
+            <View style={styles.chartContainer}>
+              <Text style={styles.chartTitle}>Status dos Contratos</Text>
+              <PieChartCustom data={pieChartData} size={200} />
+              <View style={styles.legendContainer}>
+                {pieChartData.map((item) => (
+                  <View key={item.label} style={styles.legendItem}>
+                    <View
+                      style={[
+                        styles.legendColorBox,
+                        { backgroundColor: item.color },
+                      ]}
+                    />
+                    <Text
+                      style={styles.legendText}
+                    >{`${item.label} (${item.value})`}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+          {/* --- Gráfico de Barras --- */}
+          <View style={styles.chartContainerBar}>
+            <Text style={styles.chartTitle}>Receita por Mês</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator
+              style={{ width: "100%" }}
+            >
+              <BarChart
+                data={barChartData}
+                width={barChartScrollableWidth}
+                height={250}
+                chartConfig={chartConfig}
+                fromZero
+                yAxisLabel="R$"
+                yAxisSuffix=""
+                showValuesOnTopOfBars
+              />
+            </ScrollView>
+          </View>
+        </>
       )}
-
-      {/* --- Gráfico de Barras --- */}
-      <ScrollView horizontal contentContainerStyle={styles.chartContainer}>
-        <BarChart
-          data={barChartData}
-          width={screenWidth * 1.5} // maior que a tela
-          height={250}
-          chartConfig={chartConfig}
-          fromZero
-          yAxisLabel="R$"
-          yAxisSuffix=""
-          showValuesOnTopOfBars
-        />
-      </ScrollView>
 
       {/* --- Próximos 2 eventos --- */}
       {nextTwoEvents.length > 0 && (
-        <View style={styles.chartContainer}>
+        <View style={[styles.chartContainer, styles.leftAlign]}>
           <Text style={styles.chartTitle}>Próximos Eventos</Text>
           {nextTwoEvents.map((c) => (
             <View key={c.id} style={{ marginBottom: 10 }}>
@@ -248,7 +314,10 @@ const ContractsDashboard: React.FC<DashboardProps> = ({ allContracts }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { padding: 15, backgroundColor: "#f2f2f2" },
+  scroll: { flex: 1 },
+  container: { padding: 15, paddingBottom: 24, backgroundColor: "#f2f2f2" },
+  kpiWrapper: { marginBottom: 20 },
+  kpiRow: { flexDirection: "row" },
   kpiContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -275,6 +344,16 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: "#ddd",
+  },
+  chartContainerBar: {
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    padding: 15,
+    alignItems: "flex-start",
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    // removido overflow hidden para não limitar gestos de rolagem em algumas plataformas
   },
   chartTitle: {
     fontSize: 18,
@@ -307,6 +386,16 @@ const styles = StyleSheet.create({
   legendText: {
     fontSize: 14,
     color: COLORS.text,
+  },
+  chartsRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  chartBox: {
+    flex: 1,
+  },
+  leftAlign: {
+    alignItems: "flex-start",
   },
   emptyContainer: {
     flex: 1,
