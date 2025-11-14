@@ -14,7 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import api from "@/src/services/api";
 import { router } from "expo-router";
 
-// Tipos para os dados da banda
+// Tipos
 interface Band {
   id: number;
   bandName: string;
@@ -22,87 +22,175 @@ interface Band {
   city: string;
   profilePicture?: string;
   description?: string;
-  userId: {
-    id: string;
-    role: string;
-  };
+  type: "band";
 }
 
+interface Venue {
+  id: string;
+  name: string;
+  type: string;
+  city: string;
+  profilePhoto?: string;
+  description?: string;
+  itemType: "venue";
+}
+
+type SearchItem = Band | Venue;
+
 interface SearchResponse {
-  data: Band[];
+  bands: Band[];
+  venues: Venue[];
   total: number;
-  page: number;
-  lastPage: number;
 }
 
 export default function Search() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [filterType, setFilterType] = useState<"all" | "band" | "venue">("all");
 
-  // Debounce: atualiza o termo de busca após o usuário parar de digitar
+  // Debounce
   const handleSearchChange = (text: string) => {
     setSearch(text);
-
-    // Limpa o timeout anterior
     const timer = setTimeout(() => {
       setDebouncedSearch(text);
-    }, 500); // Espera 500ms após parar de digitar
-
+    }, 500);
     return () => clearTimeout(timer);
   };
 
-  // Query para buscar bandas
+  // Query combinada
   const { data, isLoading, isError, error } = useQuery<SearchResponse>({
-    queryKey: ["bands", debouncedSearch],
+    queryKey: ["search", debouncedSearch, filterType],
     queryFn: async () => {
-      // Se não houver busca, retorna lista completa
-      const endpoint = debouncedSearch.trim()
-        ? `/bands/pesquisa?name=${encodeURIComponent(debouncedSearch)}&page=1&limit=20`
-        : `/bands?page=1&limit=20`;
+      const searchTerm = debouncedSearch.trim();
+      
+      let bands: Band[] = [];
+      let venues: Venue[] = [];
 
-      const response = await api.get(endpoint);
-      return response.data;
+      // Busca bandas
+      if (filterType === "all" || filterType === "band") {
+        try {
+          const bandEndpoint = searchTerm
+            ? `/bands/pesquisa?name=${encodeURIComponent(searchTerm)}&page=1&limit=20`
+            : `/bands?page=1&limit=20`;
+          const bandResponse = await api.get(bandEndpoint);
+          bands = bandResponse.data.data.map((b: any) => ({ ...b, type: "band" }));
+        } catch (error) {
+          console.error("Erro ao buscar bandas:", error);
+        }
+      }
+
+      // Busca estabelecimentos
+      if (filterType === "all" || filterType === "venue") {
+        try {
+          const venueEndpoint = searchTerm
+            ? `/venues/pesquisa?name=${encodeURIComponent(searchTerm)}&page=1&limit=20`
+            : `/venues?page=1&limit=20`;
+          const venueResponse = await api.get(venueEndpoint);
+          venues = venueResponse.data.data.map((v: any) => ({ ...v, itemType: "venue" }));
+        } catch (error) {
+          console.error("Erro ao buscar estabelecimentos:", error);
+        }
+      }
+
+      return {
+        bands,
+        venues,
+        total: bands.length + venues.length,
+      };
     },
-    enabled: true, // Sempre habilitado para carregar lista inicial
+    enabled: true,
   });
 
-  const renderBandItem = ({ item }: { item: Band }) => (
-    <TouchableOpacity
-      onPress={() => router.push(`/bandProfile/${item.id}`)}
-      activeOpacity={0.9}
-    >
-      <View style={styles.bandCard}>
-        {/* Imagem da banda */}
-        <Image
-          source={{
-            uri:
-              item.profilePicture ||
-              "https://via.placeholder.com/400x200?text=Sem+Foto",
-          }}
-          style={styles.bandImage}
-          resizeMode="cover"
-        />
+  // Combina e ordena resultados
+  const combinedResults: SearchItem[] = [
+    ...(data?.bands || []),
+    ...(data?.venues || []),
+  ];
 
-        {/* Informações da banda */}
-        <View style={styles.bandInfo}>
-          <Text style={styles.bandName}>{item.bandName}</Text>
-          <View style={styles.detailsRow}>
-            <Ionicons name="musical-notes" size={14} color="#9CA3AF" />
-            <Text style={styles.bandGenre}>{item.genre}</Text>
+  const renderItem = ({ item }: { item: SearchItem }) => {
+    const isBand = "bandName" in item;
+    
+    if (isBand) {
+      return (
+        <TouchableOpacity
+          onPress={() => router.push(`/bandProfile/${item.id}`)}
+          activeOpacity={0.9}
+        >
+          <View style={styles.card}>
+            <Image
+              source={{
+                uri:
+                  item.profilePicture ||
+                  "https://via.placeholder.com/400x200?text=Sem+Foto",
+              }}
+              style={styles.image}
+              resizeMode="cover"
+            />
+            <View style={styles.info}>
+              <View style={styles.badge}>
+                <Ionicons name="musical-notes" size={12} color="#FFFFFF" />
+                <Text style={styles.badgeText}>Banda</Text>
+              </View>
+              <Text style={styles.name}>{item.bandName}</Text>
+              <View style={styles.detailsRow}>
+                <Ionicons name="musical-notes" size={14} color="#9CA3AF" />
+                <Text style={styles.detail}>{item.genre}</Text>
+              </View>
+              <View style={styles.detailsRow}>
+                <Ionicons name="location" size={14} color="#9CA3AF" />
+                <Text style={styles.detail}>{item.city}</Text>
+              </View>
+              {item.description && (
+                <Text style={styles.description} numberOfLines={2}>
+                  {item.description}
+                </Text>
+              )}
+            </View>
           </View>
-          <View style={styles.detailsRow}>
-            <Ionicons name="location" size={14} color="#9CA3AF" />
-            <Text style={styles.bandCity}>{item.city}</Text>
+        </TouchableOpacity>
+      );
+    } else {
+      const venue = item as Venue;
+      return (
+        <TouchableOpacity
+          onPress={() => router.push(`/venueProfile/${venue.id}`)}
+          activeOpacity={0.9}
+        >
+          <View style={styles.card}>
+            <Image
+              source={{
+                uri:
+                  venue.profilePhoto ||
+                  "https://via.placeholder.com/400x200?text=Sem+Foto",
+              }}
+              style={styles.image}
+              resizeMode="cover"
+            />
+            <View style={styles.info}>
+              <View style={[styles.badge, { backgroundColor: "#3b82f6" }]}>
+                <Ionicons name="business" size={12} color="#FFFFFF" />
+                <Text style={styles.badgeText}>Estabelecimento</Text>
+              </View>
+              <Text style={styles.name}>{venue.name}</Text>
+              <View style={styles.detailsRow}>
+                <Ionicons name="business" size={14} color="#9CA3AF" />
+                <Text style={styles.detail}>{venue.type}</Text>
+              </View>
+              <View style={styles.detailsRow}>
+                <Ionicons name="location" size={14} color="#9CA3AF" />
+                <Text style={styles.detail}>{venue.city}</Text>
+              </View>
+              {venue.description && (
+                <Text style={styles.description} numberOfLines={2}>
+                  {venue.description}
+                </Text>
+              )}
+            </View>
           </View>
-          {item.description && (
-            <Text style={styles.bandDescription} numberOfLines={2}>
-              {item.description}
-            </Text>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+        </TouchableOpacity>
+      );
+    }
+  };
 
   const renderEmptyState = () => {
     if (isLoading) return null;
@@ -112,12 +200,12 @@ export default function Search() {
         <Ionicons name="search" size={64} color="#D1D5DB" />
         <Text style={styles.emptyText}>
           {debouncedSearch.trim()
-            ? "Nenhuma banda encontrada"
-            : "Digite para buscar bandas"}
+            ? "Nenhum resultado encontrado"
+            : "Digite para buscar"}
         </Text>
         {debouncedSearch.trim() && (
           <Text style={styles.emptySubtext}>
-            Tente buscar por nome, cidade ou gênero
+            Tente buscar por nome ou cidade
           </Text>
         )}
       </View>
@@ -135,7 +223,7 @@ export default function Search() {
       <View style={styles.searchBar}>
         <Ionicons name="search" size={20} color="#9CA3AF" />
         <TextInput
-          placeholder="Buscar bandas..."
+          placeholder="Buscar bandas e estabelecimentos..."
           placeholderTextColor="#9CA3AF"
           value={search}
           onChangeText={handleSearchChange}
@@ -150,31 +238,70 @@ export default function Search() {
         )}
       </View>
 
-      {/* Indicador de carregamento */}
+      {/* Filtros */}
+      <View style={styles.filterContainer}>
+        <TouchableOpacity
+          style={[styles.filterButton, filterType === "all" && styles.filterButtonActive]}
+          onPress={() => setFilterType("all")}
+        >
+          <Text style={[styles.filterText, filterType === "all" && styles.filterTextActive]}>
+            Todos
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[styles.filterButton, filterType === "band" && styles.filterButtonActive]}
+          onPress={() => setFilterType("band")}
+        >
+          <Ionicons 
+            name="musical-notes" 
+            size={16} 
+            color={filterType === "band" ? "#FFFFFF" : "#6B7280"} 
+          />
+          <Text style={[styles.filterText, filterType === "band" && styles.filterTextActive]}>
+            Bandas
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.filterButton, filterType === "venue" && styles.filterButtonActive]}
+          onPress={() => setFilterType("venue")}
+        >
+          <Ionicons 
+            name="business" 
+            size={16} 
+            color={filterType === "venue" ? "#FFFFFF" : "#6B7280"} 
+          />
+          <Text style={[styles.filterText, filterType === "venue" && styles.filterTextActive]}>
+            Estabelecimentos
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Loading */}
       {isLoading && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#000" />
-          <Text style={styles.loadingText}>Buscando bandas...</Text>
+          <Text style={styles.loadingText}>Buscando...</Text>
         </View>
       )}
 
-      {/* Erro */}
+      {/* Error */}
       {isError && (
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={48} color="#EF4444" />
-          <Text style={styles.errorText}>Erro ao buscar bandas</Text>
-          <Text style={styles.errorSubtext}>
-            {error instanceof Error ? error.message : "Tente novamente"}
-          </Text>
+          <Text style={styles.errorText}>Erro ao buscar</Text>
         </View>
       )}
 
-      {/* Lista de bandas */}
+      {/* Lista */}
       {!isLoading && !isError && (
         <FlatList
-          data={data?.data || []}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderBandItem}
+          data={combinedResults}
+          keyExtractor={(item, index) => 
+            "bandName" in item ? `band-${item.id}` : `venue-${item.id}`
+          }
+          renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={renderEmptyState}
           showsVerticalScrollIndicator={false}
@@ -182,11 +309,11 @@ export default function Search() {
       )}
 
       {/* Info de resultados */}
-      {!isLoading && !isError && data && data.data.length > 0 && (
+      {!isLoading && !isError && data && data.total > 0 && (
         <View style={styles.resultsInfo}>
           <Text style={styles.resultsText}>
-            {data.total}{" "}
-            {data.total === 1 ? "banda encontrada" : "bandas encontradas"}
+            {data.total} {data.total === 1 ? "resultado" : "resultados"}
+            {filterType === "all" && ` (${data.bands.length} bandas, ${data.venues.length} estabelecimentos)`}
           </Text>
         </View>
       )}
@@ -219,7 +346,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     marginHorizontal: 16,
-    marginVertical: 16,
+    marginTop: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E5E7EB",
@@ -230,11 +357,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#111827",
   },
+  filterContainer: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  filterButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: "#F3F4F6",
+    gap: 6,
+  },
+  filterButtonActive: {
+    backgroundColor: "#111827",
+  },
+  filterText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#6B7280",
+  },
+  filterTextActive: {
+    color: "#FFFFFF",
+  },
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 80,
   },
-  bandCard: {
+  card: {
     backgroundColor: "#111827",
     borderRadius: 16,
     marginBottom: 16,
@@ -245,15 +398,31 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  bandImage: {
+  image: {
     width: "100%",
     height: 180,
     backgroundColor: "#374151",
   },
-  bandInfo: {
+  info: {
     padding: 16,
   },
-  bandName: {
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "#7C3AED",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 8,
+    gap: 4,
+  },
+  badgeText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  name: {
     color: "#FFFFFF",
     fontWeight: "600",
     fontSize: 18,
@@ -264,17 +433,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 4,
   },
-  bandGenre: {
+  detail: {
     color: "#D1D5DB",
     fontSize: 14,
     marginLeft: 6,
   },
-  bandCity: {
-    color: "#D1D5DB",
-    fontSize: 14,
-    marginLeft: 6,
-  },
-  bandDescription: {
+  description: {
     color: "#9CA3AF",
     fontSize: 13,
     marginTop: 8,
@@ -302,12 +466,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     color: "#EF4444",
-  },
-  errorSubtext: {
-    marginTop: 8,
-    fontSize: 14,
-    color: "#6B7280",
-    textAlign: "center",
   },
   emptyState: {
     alignItems: "center",
