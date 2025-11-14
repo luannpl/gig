@@ -9,6 +9,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { router } from 'expo-router';
 
@@ -18,6 +19,9 @@ export default function NewPassword() {
     confirmPassword: '',
   });
   const [isLoading, setIsLoading] = useState(false);
+  const { width } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
+  const contentWidth = isWeb ? (width > 800 ? 500 : '100%') : '100%';
 
   const handleInputChange = (field: string, value: string) => {
     setPasswords(prev => ({
@@ -117,7 +121,7 @@ export default function NewPassword() {
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.content}>
+        <View style={[styles.content, { width: contentWidth, alignSelf: 'center' }]}>
           {/* Logo */}
           <View style={styles.logoContainer}>
             <View style={styles.logoBox}>
