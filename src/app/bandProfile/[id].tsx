@@ -26,7 +26,7 @@ import { Band } from "@/src/types/band";
 import { Review, ReviewCreateDto } from "@/src/types/review";
 import { createReview } from "@/src/services/reviews";
 import createContract, { getVenueByUserId } from "@/src/services/contracts";
-import { get } from "react-native/Libraries/TurboModule/TurboModuleRegistry";
+import { User } from "@/src/types/venue";
 
 export default function ProfileBand() {
   const router = useRouter();
@@ -54,7 +54,7 @@ export default function ProfileBand() {
     },
   });
 
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [avaliacoes, setAvaliacoes] = useState<Review[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [newRating, setNewRating] = useState(0);
@@ -284,13 +284,17 @@ export default function ProfileBand() {
               {banda.genre}
             </Text>
 
-            <TouchableOpacity
-              className="border border-black px-6 py-2 rounded-lg bg-black mt-2"
-              activeOpacity={0.8}
-              onPress={() => setModalContratarVisible(true)}
-            >
-              <Text className="font-semibold text-white">Contratar Banda</Text>
-            </TouchableOpacity>
+            {user && !(user.role == "band") && (
+              <TouchableOpacity
+                className="border border-black px-6 py-2 rounded-lg bg-black mt-2"
+                activeOpacity={0.8}
+                onPress={() => setModalContratarVisible(true)}
+              >
+                <Text className="font-semibold text-white">
+                  Contratar Banda
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -366,12 +370,14 @@ export default function ProfileBand() {
         {/* AVALIAÇÕES */}
         <View className="flex-row justify-between items-center mt-6 mb-2 mx-4">
           <Text className="text-base font-bold">Avaliações</Text>
-          <TouchableOpacity
-            className="bg-black px-4 py-2 rounded-lg"
-            onPress={() => setModalVisible(true)}
-          >
-            <Text className="text-white font-semibold text-sm">Avaliar</Text>
-          </TouchableOpacity>
+          {user && !(user.role == "band") && (
+            <TouchableOpacity
+              className="bg-black px-4 py-2 rounded-lg"
+              onPress={() => setModalVisible(true)}
+            >
+              <Text className="text-white font-semibold text-sm">Avaliar</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View className="mx-4">
