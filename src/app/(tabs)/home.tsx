@@ -2,7 +2,7 @@ import { getPosts, createPost } from "@/src/services/posts";
 import { getMe } from "@/src/services/auth";
 import { getCommentsByPostId, createComment } from "@/src/services/comments";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -12,12 +12,13 @@ import {
   TextInput,
   Modal,
   Alert,
-  FlatList,
   Image,
+  FlatList,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
 } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import axios from "axios";
 import api from "@/src/services/api";
 import * as ImagePicker from "expo-image-picker";
@@ -30,9 +31,15 @@ import { router } from "expo-router";
 interface User {
   name: string;
   id: string;
+  role: "venue" | "band" | "user";
   avatar?: string;
   band?: {
     profilePicture?: string;
+    bandName?: string;
+  };
+  venue?: {
+    profilePhoto?: string;
+    name?: string;
   };
 }
 
@@ -63,6 +70,36 @@ interface Comment {
 }
 
 // --- Funções Auxiliares ---
+
+const DEFAULT_IMAGE = "https://i.pravatar.cc/150?u=default";
+
+const normalizeImageUrl = (url: string | null | undefined) => {
+  if (!url) return null;
+
+  // Se já é uma URL completa (http ou https) - SIGNED URLs do Supabase caem aqui
+  if (url.startsWith('http')) {
+    console.log('✅ URL completa detectada:', url);
+    return url;
+  }
+
+  // Se é um caminho do Supabase (começa com /)
+  if (url.startsWith('/')) {
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+    console.log('🔧 Construindo URL do Supabase...');
+
+    if (supabaseUrl && supabaseUrl.startsWith('https://')) {
+      const fullUrl = `${supabaseUrl}/storage/v1/object/public/gig${url}`;
+      console.log('✅ URL construída:', fullUrl);
+      return fullUrl;
+    } else {
+      console.warn('⚠️ EXPO_PUBLIC_SUPABASE_URL não definida');
+      return null;
+    }
+  }
+
+  console.log('❌ Formato não reconhecido, retornando null');
+  return null;
+};
 
 const timeAgo = (dateString: string): string => {
   const date = new Date(dateString);
@@ -297,6 +334,38 @@ const HomeScreen: React.FC = () => {
 
     fetchCurrentUser();
   }, []); // Executa apenas na montagem do componente
+
+  const currentUserData = useMemo(() => {
+    if (!currentUser) return null;
+
+    console.log('👤 Processando dados do usuário:', {
+      id: currentUser.id,
+      name: currentUser.name,
+      role: currentUser.role,
+      avatar: currentUser.avatar,
+      venuePhoto: currentUser.venue?.profilePhoto,
+      bandPhoto: currentUser.band?.profilePicture
+    });
+
+    // Prioridade: avatar direto > venue.profilePhoto > band.profilePicture
+    const rawAvatar =
+      currentUser.avatar ||
+      currentUser.venue?.profilePhoto ||
+      currentUser.band?.profilePicture;
+
+    const normalizedAvatar = normalizeImageUrl(rawAvatar);
+
+    console.log('🖼️ Avatar processado:', {
+      raw: rawAvatar?.substring(0, 50),
+      normalized: normalizedAvatar?.substring(0, 50)
+    });
+
+    return {
+      ...currentUser,
+      profileImage: normalizedAvatar || `https://i.pravatar.cc/150?u=${currentUser.id}`,
+    };
+  }, [currentUser]);
+
 
   // Função para tirar foto com a câmera
   const handleTakePhoto = async (): Promise<void> => {
@@ -595,14 +664,17 @@ const HomeScreen: React.FC = () => {
 
       <View className="bg-white mx-4 my-4 rounded-xl p-5 shadow-md">
         <View className="flex-row items-center mb-3">
-          <Image
-            source={{
-              uri:
-                currentUser.avatar ||
-                currentUser.band?.profilePicture ||
-                `https://i.pravatar.cc/150?u=${currentUser.id}`,
+          <ExpoImage
+            source={{ uri: currentUserData?.profileImage || DEFAULT_IMAGE }}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              marginRight: 12,
+              backgroundColor: '#E5E7EB'
             }}
-            className="w-10 h-10 rounded-full mr-3 bg-gray-200"
+            contentFit="cover"
+            transition={300}
           />
           <Text className="text-base font-semibold text-gray-700">
             {currentUser.name}
