@@ -2,7 +2,7 @@ import { getPosts, createPost } from "@/src/services/posts";
 import { getMe } from "@/src/services/auth";
 import { getCommentsByPostId, createComment } from "@/src/services/comments";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -12,12 +12,13 @@ import {
   TextInput,
   Modal,
   Alert,
-  FlatList,
   Image,
+  FlatList,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
 } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import axios from "axios";
 import api from "@/src/services/api";
 import * as ImagePicker from "expo-image-picker";
@@ -30,9 +31,15 @@ import { router } from "expo-router";
 interface User {
   name: string;
   id: string;
+  role: "venue" | "band" | "user";
   avatar?: string;
   band?: {
     profilePicture?: string;
+    bandName?: string;
+  };
+  venue?: {
+    profilePhoto?: string;
+    name?: string;
   };
 }
 
@@ -63,6 +70,36 @@ interface Comment {
 }
 
 // --- Funções Auxiliares ---
+
+const DEFAULT_IMAGE = "https://i.pravatar.cc/150?u=default";
+
+const normalizeImageUrl = (url: string | null | undefined) => {
+  if (!url) return null;
+
+  // Se já é uma URL completa (http ou https) - SIGNED URLs do Supabase caem aqui
+  if (url.startsWith('http')) {
+    console.log('✅ URL completa detectada:', url);
+    return url;
+  }
+
+  // Se é um caminho do Supabase (começa com /)
+  if (url.startsWith('/')) {
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+    console.log('🔧 Construindo URL do Supabase...');
+
+    if (supabaseUrl && supabaseUrl.startsWith('https://')) {
+      const fullUrl = `${supabaseUrl}/storage/v1/object/public/gig${url}`;
+      console.log('✅ URL construída:', fullUrl);
+      return fullUrl;
+    } else {
+      console.warn('⚠️ EXPO_PUBLIC_SUPABASE_URL não definida');
+      return null;
+    }
+  }
+
+  console.log('❌ Formato não reconhecido, retornando null');
+  return null;
+};
 
 const timeAgo = (dateString: string): string => {
   const date = new Date(dateString);
@@ -297,6 +334,38 @@ const HomeScreen: React.FC = () => {
 
     fetchCurrentUser();
   }, []); // Executa apenas na montagem do componente
+
+  const currentUserData = useMemo(() => {
+    if (!currentUser) return null;
+
+    console.log('👤 Processando dados do usuário:', {
+      id: currentUser.id,
+      name: currentUser.name,
+      role: currentUser.role,
+      avatar: currentUser.avatar,
+      venuePhoto: currentUser.venue?.profilePhoto,
+      bandPhoto: currentUser.band?.profilePicture
+    });
+
+    // Prioridade: avatar direto > venue.profilePhoto > band.profilePicture
+    const rawAvatar =
+      currentUser.avatar ||
+      currentUser.venue?.profilePhoto ||
+      currentUser.band?.profilePicture;
+
+    const normalizedAvatar = normalizeImageUrl(rawAvatar);
+
+    console.log('🖼️ Avatar processado:', {
+      raw: rawAvatar?.substring(0, 50),
+      normalized: normalizedAvatar?.substring(0, 50)
+    });
+
+    return {
+      ...currentUser,
+      profileImage: normalizedAvatar || `https://i.pravatar.cc/150?u=${currentUser.id}`,
+    };
+  }, [currentUser]);
+
 
   // Função para tirar foto com a câmera
   const handleTakePhoto = async (): Promise<void> => {
@@ -593,168 +662,175 @@ const HomeScreen: React.FC = () => {
         <Text className="text-2xl font-bold text-black italic">gig</Text>
       </View>
 
-      <View className="bg-white mx-4 my-4 rounded-xl p-5 shadow-md">
-        <View className="flex-row items-center mb-3">
-          <Image
-            source={{
-              uri:
-                currentUser.avatar ||
-                currentUser.band?.profilePicture ||
-                `https://i.pravatar.cc/150?u=${currentUser.id}`,
-            }}
-            className="w-10 h-10 rounded-full mr-3 bg-gray-200"
-          />
-          <Text className="text-base font-semibold text-gray-700">
-            {currentUser.name}
-          </Text>
-        </View>
+      <View className="flex-1 items-center">
+        <View className="w-full flex-1 lg:max-w-3xl">
+          <View className="bg-white mx-4 my-4 rounded-xl p-5 shadow-md">
+            <View className="flex-row items-center mb-3">
+              <ExpoImage
+                source={{ uri: currentUserData?.profileImage || DEFAULT_IMAGE }}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  marginRight: 12,
+                  backgroundColor: '#E5E7EB'
+                }}
+                contentFit="cover"
+                transition={300}
+              />
+              <Text className="text-base font-semibold text-gray-700">
+                {currentUser.name}
+              </Text>
+            </View>
 
-        <TextInput
-          placeholder={`O que você está pensando, ${currentUser.name}?`}
-          placeholderTextColor="#999"
-          multiline
-          value={newPostText}
-          onChangeText={setNewPostText}
-          textAlignVertical="top"
-          className="min-h-20 text-base"
-          editable={!createPostMutation.isPending}
-        />
-
-        {/* Preview da imagem selecionada */}
-        {selectedImage && (
-          <View className="mt-3 relative">
-            <Image
-              source={{ uri: selectedImage }}
-              className="w-full h-64 rounded-lg bg-gray-200"
-              resizeMode="cover"
+            <TextInput
+              placeholder={`O que você está pensando, ${currentUser.name}?`}
+              placeholderTextColor="#999"
+              multiline
+              value={newPostText}
+              onChangeText={setNewPostText}
+              textAlignVertical="top"
+              className="min-h-20 text-base"
+              editable={!createPostMutation.isPending}
             />
-            <TouchableOpacity
-              className="absolute top-2 right-2 bg-red-500 rounded-full p-2"
-              onPress={handleRemoveImage}
-            >
-              <Ionicons name="close" size={20} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        )}
 
-        {/* Botões de ação */}
-        <View className="flex-row justify-between items-center mt-4 pt-4 border-t border-gray-200">
-          <View className="flex-row gap-3">
-            <TouchableOpacity
-              className="flex-row items-center bg-blue-50 px-4 py-2 rounded-full"
-              onPress={handleTakePhoto}
-              disabled={createPostMutation.isPending}
-            >
-              <Ionicons name="camera" size={20} color="#3b82f6" />
-              <Text className="text-blue-500 text-sm font-semibold ml-2">
-                Câmera
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              className="flex-row items-center bg-green-50 px-4 py-2 rounded-full"
-              onPress={handlePickImage}
-              disabled={createPostMutation.isPending}
-            >
-              <Ionicons name="images" size={20} color="#10b981" />
-              <Text className="text-green-500 text-sm font-semibold ml-2">
-                Galeria
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
-            className={`py-2 px-6 rounded-full ${createPostMutation.isPending ? "bg-gray-400" : "bg-blue-500"}`}
-            onPress={handleCreatePost}
-            disabled={createPostMutation.isPending || newPostText.trim() === ""}
-          >
-            <Text className="text-white text-sm font-semibold">
-              {createPostMutation.isPending ? "Publicando..." : "Publicar"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Posts List */}
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {posts.map((post: Post) => {
-          const isLiked = likedPosts.has(post.id);
-          const isLiking = likingPosts.has(post.id);
-
-          return (
-            <View
-              key={post.id}
-              className="bg-white mx-4 mb-4 rounded-xl p-5 shadow-md"
-            >
-              <View className="flex-row items-center mb-4">
+            {/* Preview da imagem selecionada */}
+            {selectedImage && (
+              <View className="mt-3 relative">
                 <Image
-                  source={{
-                    uri:
-                      post.user.avatar ||
-                      post.user.band?.profilePicture ||
-                      `https://i.pravatar.cc/150?u=${post.user.id}`,
-                  }}
-                  className="w-10 h-10 rounded-full mr-2.5 bg-gray-200"
-                />
-                <View className="flex-col">
-                  <Text className="text-base font-bold text-black mb-0.5">
-                    {post.user.name}
-                  </Text>
-                  <Text className="text-sm text-gray-500">
-                    {timeAgo(post.createdAt)}
-                  </Text>
-                </View>
-              </View>
-              <Text className="text-base text-black mb-5 leading-snug">
-                {post.content}
-              </Text>
-              {post.imageUrl && (
-                <Image
-                  source={{ uri: post.imageUrl }}
-                  className="w-full h-64 rounded-lg mb-4 bg-gray-200"
+                  source={{ uri: selectedImage }}
+                  className="w-full h-64 rounded-lg bg-gray-200"
                   resizeMode="cover"
                 />
-              )}
-              <View className="flex-row justify-between">
                 <TouchableOpacity
-                  className="flex-row items-center flex-1"
-                  onPress={() => handleLike(post.id)}
-                  disabled={isLiking}
+                  className="absolute top-2 right-2 bg-red-500 rounded-full p-2"
+                  onPress={handleRemoveImage}
                 >
-                  <View className="mr-2">
-                    <Text
-                      className="text-base"
-                      style={{
-                        color: isLiked ? "#EF4444" : "#9CA3AF",
-                        opacity: isLiking ? 0.5 : 1,
-                      }}
-                    >
-                      {isLiked ? "♥" : "♡"}
-                    </Text>
-                  </View>
-                  <Text className="text-sm text-gray-500">
-                    {post.likesCount || 0} curtida
-                    {post.likesCount !== 1 ? "s" : ""}
+                  <Ionicons name="close" size={20} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Botões de ação */}
+            <View className="flex-row justify-between items-center mt-4 pt-4 border-t border-gray-200">
+              <View className="flex-row gap-3">
+                <TouchableOpacity
+                  className="flex-row items-center bg-blue-50 px-4 py-2 rounded-full"
+                  onPress={handleTakePhoto}
+                  disabled={createPostMutation.isPending}
+                >
+                  <Ionicons name="camera" size={20} color="#3b82f6" />
+                  <Text className="text-blue-500 text-sm font-semibold ml-2">
+                    Câmera
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  className="flex-row items-center flex-1"
-                  onPress={() => handleOpenComments(post.id)}
+                  className="flex-row items-center bg-green-50 px-4 py-2 rounded-full"
+                  onPress={handlePickImage}
+                  disabled={createPostMutation.isPending}
                 >
-                  <View className="mr-2">
-                    <Text className="mb-1 leading-5">💬</Text>
-                  </View>
-                  <Text className="text-sm text-gray-500">
-                    {post.commentsCount || 0} comentário
-                    {post.commentsCount !== 1 ? "s" : ""}
+                  <Ionicons name="images" size={20} color="#10b981" />
+                  <Text className="text-green-500 text-sm font-semibold ml-2">
+                    Galeria
                   </Text>
                 </TouchableOpacity>
               </View>
+
+              <TouchableOpacity
+                className={`py-2 px-6 rounded-full ${createPostMutation.isPending ? "bg-gray-400" : "bg-blue-500"}`}
+                onPress={handleCreatePost}
+                disabled={createPostMutation.isPending || newPostText.trim() === ""}
+              >
+                <Text className="text-white text-sm font-semibold">
+                  {createPostMutation.isPending ? "Publicando..." : "Publicar"}
+                </Text>
+              </TouchableOpacity>
             </View>
-          );
-        })}
-      </ScrollView>
+          </View>
+
+          {/* Posts List */}
+          <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+            {posts.map((post: Post) => {
+              const isLiked = likedPosts.has(post.id);
+              const isLiking = likingPosts.has(post.id);
+
+              return (
+                <View
+                  key={post.id}
+                  className="bg-white mx-4 mb-4 rounded-xl p-5 shadow-md"
+                >
+                  <View className="flex-row items-center mb-4">
+                    <Image
+                      source={{
+                        uri:
+                          post.user.avatar ||
+                          post.user.band?.profilePicture ||
+                          `https://i.pravatar.cc/150?u=${post.user.id}`,
+                      }}
+                      className="w-10 h-10 rounded-full mr-2.5 bg-gray-200"
+                    />
+                    <View className="flex-col">
+                      <Text className="text-base font-bold text-black mb-0.5">
+                        {post.user.name}
+                      </Text>
+                      <Text className="text-sm text-gray-500">
+                        {timeAgo(post.createdAt)}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text className="text-base text-black mb-5 leading-snug">
+                    {post.content}
+                  </Text>
+                  {post.imageUrl && (
+                    <Image
+                      source={{ uri: post.imageUrl }}
+                      className="w-full h-64 rounded-lg mb-4 bg-gray-200"
+                      resizeMode="cover"
+                    />
+                  )}
+                  <View className="flex-row justify-between">
+                    <TouchableOpacity
+                      className="flex-row items-center flex-1"
+                      onPress={() => handleLike(post.id)}
+                      disabled={isLiking}
+                    >
+                      <View className="mr-2">
+                        <Text
+                          className="text-base"
+                          style={{
+                            color: isLiked ? "#EF4444" : "#9CA3AF",
+                            opacity: isLiking ? 0.5 : 1,
+                          }}
+                        >
+                          {isLiked ? "♥" : "♡"}
+                        </Text>
+                      </View>
+                      <Text className="text-sm text-gray-500">
+                        {post.likesCount || 0} curtida
+                        {post.likesCount !== 1 ? "s" : ""}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      className="flex-row items-center flex-1"
+                      onPress={() => handleOpenComments(post.id)}
+                    >
+                      <View className="mr-2">
+                        <Text className="mb-1 leading-5">💬</Text>
+                      </View>
+                      <Text className="text-sm text-gray-500">
+                        {post.commentsCount || 0} comentário
+                        {post.commentsCount !== 1 ? "s" : ""}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </View>
 
       <CommentsModal
         showComments={showComments}

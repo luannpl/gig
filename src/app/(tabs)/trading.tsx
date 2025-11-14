@@ -141,7 +141,7 @@ const AdminContractScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.headerContainer}>
         <Text style={styles.logoText}>gig</Text>
-        <Text style={styles.headerTitle}>Contratos</Text>
+        <Text style={styles.headerTitle}>Propostas</Text>
       </View>
 
       {/* Abas de Navegação */}
