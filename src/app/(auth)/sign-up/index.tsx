@@ -5,10 +5,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { Link, router } from 'expo-router';
 
 export default function SignUp() {
+  const { width } = useWindowDimensions();
   const handleBandSignUp = () => {
     router.push('/(auth)/sign-up/band');
   };
@@ -19,10 +22,16 @@ export default function SignUp() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        {/* Logo */}
-        <View style={styles.logoContainer}>
-          <View style={styles.logoBox}>
+      <ScrollView contentContainerStyle={styles.scrollViewContent}>
+        <View
+          style={[
+            styles.content,
+            width > 768 && styles.contentDesktop,
+          ]}
+        >
+          {/* Logo */}
+          <View style={styles.logoContainer}>
+            <View style={styles.logoBox}>
             <Text style={styles.logoText}>gig</Text>
           </View>
         </View>
@@ -64,6 +73,7 @@ export default function SignUp() {
           </Link>
         </View>
       </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -71,13 +81,24 @@ export default function SignUp() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    justifyContent: "center",
   },
   content: {
-    flex: 1,
     paddingHorizontal: 30,
-    justifyContent: 'center',
-    paddingTop: 50,
+    paddingVertical: 50,
+  },
+  contentDesktop: {
+    maxWidth: 500,
+    alignSelf: "center",
+    padding: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    backgroundColor: "#fafafa",
   },
   logoContainer: {
     alignItems: 'center',
