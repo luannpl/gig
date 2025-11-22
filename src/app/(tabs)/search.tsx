@@ -7,13 +7,19 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  useWindowDimensions,
+  Platform, // Importar Platform para estilos específicos de plataforma
 } from "react-native";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react"; // Adicionando useMemo
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/src/services/api";
+import { getMe } from "@/src/services/auth";
 import { router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
+
+// Tipos
 // Tipos
 interface Band {
   id: number;
@@ -35,6 +41,24 @@ interface Venue {
   itemType: "venue";
 }
 
+interface User {
+  name: string;
+  id: string; // ID do usuário principal
+  role: "venue" | "band" | "user";
+  avatar?: string;
+  band?: {
+    id: number; // ID da entidade banda
+    profilePicture?: string;
+    bandName?: string;
+  };
+  venue?: {
+    id: string; // ID da entidade venue
+    profilePhoto?: string;
+    name?: string;
+  };
+}
+
+
 type SearchItem = Band | Venue;
 
 interface SearchResponse {
@@ -43,10 +67,49 @@ interface SearchResponse {
   total: number;
 }
 
+
+// Constantes para breakpoints
+const BREAKPOINT_TABLET = 768;
+const BREAKPOINT_DESKTOP = 1024;
+
+
 export default function Search() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterType, setFilterType] = useState<"all" | "band" | "venue">("all");
+  const [isLoadingUser, setIsLoadingUser] = useState<boolean>(true);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  // 1. OBTENÇÃO DO USUÁRIO LOGADO
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        setIsLoadingUser(true);
+        const token = await AsyncStorage.getItem("token");
+
+        if (!token) {
+          setCurrentUser(null);
+          return;
+        }
+
+        try {
+          const userData = await getMe(token);
+          setCurrentUser(userData as User);
+        } catch (apiError) {
+          console.error("Erro ao buscar dados do usuário:", apiError);
+          throw apiError;
+        }
+      } catch (error) {
+        console.error("ERRO FATAL AO CARREGAR USUÁRIO:", error);
+        await AsyncStorage.removeItem("token");
+        setCurrentUser(null);
+      } finally {
+        setIsLoadingUser(false);
+      }
+    };
+
+    fetchCurrentUser(); // Adicione esta linha para executar a função
+  }, []);
 
   // Debounce
   const handleSearchChange = (text: string) => {
@@ -57,12 +120,19 @@ export default function Search() {
     return () => clearTimeout(timer);
   };
 
+
+  // Lógica de responsividade
+  const { width } = useWindowDimensions();
+  const isTablet = width >= BREAKPOINT_TABLET;
+  const isDesktop = width >= BREAKPOINT_DESKTOP;
+
+
   // Query combinada
   const { data, isLoading, isError, error } = useQuery<SearchResponse>({
     queryKey: ["search", debouncedSearch, filterType],
     queryFn: async () => {
       const searchTerm = debouncedSearch.trim();
-      
+
       let bands: Band[] = [];
       let venues: Venue[] = [];
 
@@ -73,7 +143,18 @@ export default function Search() {
             ? `/bands/pesquisa?name=${encodeURIComponent(searchTerm)}&page=1&limit=20`
             : `/bands?page=1&limit=20`;
           const bandResponse = await api.get(bandEndpoint);
-          bands = bandResponse.data.data.map((b: any) => ({ ...b, type: "band" }));
+          bands = bandResponse.data.data.map((b: any) => ({
+            ...b,
+            type: "band",
+          }));
+
+          // Filtrar a banda do usuário logado - VERIFICAÇÃO MAIS SEGURA
+          if (currentUser?.role === "band" && currentUser.band?.bandName) {
+            bands = bands.filter(band =>
+              band.id !== parseInt(currentUser.id) &&
+              band.bandName !== currentUser.band?.bandName
+            );
+          }
         } catch (error) {
           console.error("Erro ao buscar bandas:", error);
         }
@@ -86,7 +167,18 @@ export default function Search() {
             ? `/venues/pesquisa?name=${encodeURIComponent(searchTerm)}&page=1&limit=20`
             : `/venues?page=1&limit=20`;
           const venueResponse = await api.get(venueEndpoint);
-          venues = venueResponse.data.data.map((v: any) => ({ ...v, itemType: "venue" }));
+          venues = venueResponse.data.data.map((v: any) => ({
+            ...v,
+            itemType: "venue",
+          }));
+
+          // Filtrar o estabelecimento do usuário logado - VERIFICAÇÃO MAIS SEGURA
+          if (currentUser?.role === "venue" && currentUser.venue?.name) {
+            venues = venues.filter(venue =>
+              venue.id !== currentUser.id &&
+              venue.name !== currentUser.venue?.name
+            );
+          }
         } catch (error) {
           console.error("Erro ao buscar estabelecimentos:", error);
         }
@@ -101,22 +193,74 @@ export default function Search() {
     enabled: true,
   });
 
-  // Combina e ordena resultados
-  const combinedResults: SearchItem[] = [
-    ...(data?.bands || []),
-    ...(data?.venues || []),
-  ];
+
+  // 2. FILTRAGEM DOS RESULTADOS COM BASE NO USUÁRIO LOGADO
+  const combinedResults: SearchItem[] = useMemo(() => {
+    let results: SearchItem[] = [
+      ...(data?.bands || []),
+      ...(data?.venues || []),
+    ];
+
+    if (!currentUser) {
+      return results; // Não há usuário logado para filtrar
+    }
+
+    const loggedRole = currentUser.role;
+    let loggedEntityId: string | number | null = null;
+
+    if (loggedRole === "venue" && currentUser.venue) {
+      // O ID da entidade Venue é uma string (UUID)
+      loggedEntityId = currentUser.venue.id;
+    } else if (loggedRole === "band" && currentUser.band) {
+      // O ID da entidade Band é um número
+      loggedEntityId = currentUser.band.id;
+    }
+
+    if (!loggedEntityId) {
+      return results; // Usuário logado, mas não é Venue nem Band (ou dados incompletos)
+    }
+
+    return results.filter(item => {
+      if ("bandName" in item) {
+        // Se for Banda, o ID é numérico
+        return item.id !== loggedEntityId;
+      } else {
+        // Se for Estabelecimento, o ID é string (UUID)
+        return item.id !== loggedEntityId;
+      }
+    });
+
+  }, [data, currentUser]); // Recalcula quando os dados da busca OU o usuário logado mudarem
+
+
+  // O estado de carregamento é se a busca principal está carregando OU se ainda estamos esperando o ID do usuário
+  const totalLoading = isLoading || isLoadingUser;
+
+  // Determina o número de colunas para a FlatList
+  const numColumns = isDesktop ? 3 : isTablet ? 2 : 1;
+
 
   const renderItem = ({ item }: { item: SearchItem }) => {
     const isBand = "bandName" in item;
-    
+
+    // Estilo do cartão ajustado para o layout de colunas
+    const cardStyle = [
+      styles.card,
+      isTablet && {
+        width: isDesktop ? width / 3 - 24 : width / 2 - 24,
+        marginHorizontal: 8,
+      },
+      !isTablet && { marginHorizontal: 0 }, // No mobile, remove o marginHorizontal se for aplicado no FlatList
+    ];
+
     if (isBand) {
       return (
         <TouchableOpacity
           onPress={() => router.push(`/bandProfile/${item.id}`)}
           activeOpacity={0.9}
+          style={cardStyle} // Aplica o estilo do cartão aqui
         >
-          <View style={styles.card}>
+          <View>
             <Image
               source={{
                 uri:
@@ -155,8 +299,9 @@ export default function Search() {
         <TouchableOpacity
           onPress={() => router.push(`/venueProfile/${venue.id}`)}
           activeOpacity={0.9}
+          style={cardStyle} // Aplica o estilo do cartão aqui
         >
-          <View style={styles.card}>
+          <View>
             <Image
               source={{
                 uri:
@@ -192,8 +337,9 @@ export default function Search() {
     }
   };
 
+
   const renderEmptyState = () => {
-    if (isLoading) return null;
+    if (totalLoading) return null; // Usa totalLoading aqui
 
     return (
       <View style={styles.emptyState}>
@@ -211,6 +357,7 @@ export default function Search() {
       </View>
     );
   };
+
 
   return (
     <View style={styles.container}>
@@ -239,47 +386,76 @@ export default function Search() {
       </View>
 
       {/* Filtros */}
-      <View style={styles.filterContainer}>
+      <View
+        style={[
+          styles.filterContainer,
+          isTablet && styles.filterContainerTablet,
+        ]}
+      >
         <TouchableOpacity
-          style={[styles.filterButton, filterType === "all" && styles.filterButtonActive]}
+          style={[
+            styles.filterButton,
+            filterType === "all" && styles.filterButtonActive,
+          ]}
           onPress={() => setFilterType("all")}
         >
-          <Text style={[styles.filterText, filterType === "all" && styles.filterTextActive]}>
+          <Text
+            style={[
+              styles.filterText,
+              filterType === "all" && styles.filterTextActive,
+            ]}
+          >
             Todos
           </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
-          style={[styles.filterButton, filterType === "band" && styles.filterButtonActive]}
+          style={[
+            styles.filterButton,
+            filterType === "band" && styles.filterButtonActive,
+          ]}
           onPress={() => setFilterType("band")}
         >
-          <Ionicons 
-            name="musical-notes" 
-            size={16} 
-            color={filterType === "band" ? "#FFFFFF" : "#6B7280"} 
+          <Ionicons
+            name="musical-notes"
+            size={16}
+            color={filterType === "band" ? "#FFFFFF" : "#6B7280"}
           />
-          <Text style={[styles.filterText, filterType === "band" && styles.filterTextActive]}>
+          <Text
+            style={[
+              styles.filterText,
+              filterType === "band" && styles.filterTextActive,
+            ]}
+          >
             Bandas
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.filterButton, filterType === "venue" && styles.filterButtonActive]}
+          style={[
+            styles.filterButton,
+            filterType === "venue" && styles.filterButtonActive,
+          ]}
           onPress={() => setFilterType("venue")}
         >
-          <Ionicons 
-            name="business" 
-            size={16} 
-            color={filterType === "venue" ? "#FFFFFF" : "#6B7280"} 
+          <Ionicons
+            name="business"
+            size={16}
+            color={filterType === "venue" ? "#FFFFFF" : "#6B7280"}
           />
-          <Text style={[styles.filterText, filterType === "venue" && styles.filterTextActive]}>
+          <Text
+            style={[
+              styles.filterText,
+              filterType === "venue" && styles.filterTextActive,
+            ]}
+          >
             Estabelecimentos
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* Loading */}
-      {isLoading && (
+      {totalLoading && ( // Usa totalLoading aqui
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#000" />
           <Text style={styles.loadingText}>Buscando...</Text>
@@ -295,31 +471,36 @@ export default function Search() {
       )}
 
       {/* Lista */}
-      {!isLoading && !isError && (
+      {!totalLoading && !isError && ( // Usa totalLoading aqui
         <FlatList
           data={combinedResults}
-          keyExtractor={(item, index) => 
+          keyExtractor={(item, index) =>
             "bandName" in item ? `band-${item.id}` : `venue-${item.id}`
           }
           renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            isTablet && styles.listContentTablet, // Estilo para layout de colunas
+          ]}
+          numColumns={numColumns} // Adiciona o número de colunas
+          columnWrapperStyle={isTablet ? styles.columnWrapper : undefined} // Estilo para espaçamento entre colunas
           ListEmptyComponent={renderEmptyState}
           showsVerticalScrollIndicator={false}
         />
       )}
 
       {/* Info de resultados */}
-      {!isLoading && !isError && data && data.total > 0 && (
+      {!totalLoading && !isError && combinedResults.length > 0 && ( // Usa combinedResults.length
         <View style={styles.resultsInfo}>
           <Text style={styles.resultsText}>
-            {data.total} {data.total === 1 ? "resultado" : "resultados"}
-            {filterType === "all" && ` (${data.bands.length} bandas, ${data.venues.length} estabelecimentos)`}
+            {combinedResults.length} {combinedResults.length === 1 ? "resultado" : "resultados"}
           </Text>
         </View>
       )}
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
@@ -328,7 +509,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: "#F3F4F6",
-    paddingVertical: 24,
+    paddingVertical: Platform.OS === "ios" ? 48 : 24, // Ajuste para iOS/Android
     paddingHorizontal: 16,
     alignItems: "center",
     borderBottomWidth: 1,
@@ -363,6 +544,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 8,
   },
+  filterContainerTablet: {
+    justifyContent: "center", // Centraliza os filtros em telas maiores
+  },
   filterButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -387,6 +571,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 80,
   },
+  listContentTablet: {
+    paddingHorizontal: 8, // Ajusta o padding para compensar o marginHorizontal dos cards
+  },
+  columnWrapper: {
+    justifyContent: "space-between", // Distribui o espaço entre as colunas
+    marginBottom: 16, // Espaçamento entre as linhas
+  },
   card: {
     backgroundColor: "#111827",
     borderRadius: 16,
@@ -397,6 +588,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+    flex: 1, // Adiciona flex: 1 para funcionar com numColumns
   },
   image: {
     width: "100%",
