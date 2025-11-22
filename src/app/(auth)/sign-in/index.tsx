@@ -9,6 +9,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
+  ScrollView,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Link, router } from "expo-router";
@@ -17,6 +19,7 @@ import { useMutation } from "@tanstack/react-query";
 import { authSignIn } from "@/src/services/auth";
 
 export default function SignIn() {
+  const { width } = useWindowDimensions();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { mutate: login, isPending } = useMutation({
@@ -47,10 +50,16 @@ export default function SignIn() {
         style={styles.keyboardView}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <View style={styles.content}>
-          {/* Logo Container */}
-          <View style={styles.logoContainer}>
-            <View style={styles.logoBox}>
+        <ScrollView contentContainerStyle={styles.scrollViewContent}>
+          <View
+            style={[
+              styles.content,
+              width > 768 && styles.contentDesktop,
+            ]}
+          >
+            {/* Logo Container */}
+            <View style={styles.logoContainer}>
+              <View style={styles.logoBox}>
               <Text style={styles.logoText}>gig</Text>
             </View>
           </View>
@@ -116,6 +125,7 @@ export default function SignIn() {
             </Link>
           </View>
         </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -129,11 +139,22 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 30,
+  scrollViewContent: {
+    flexGrow: 1,
     justifyContent: "center",
-    paddingTop: 50,
+  },
+  content: {
+    paddingHorizontal: 30,
+    paddingVertical: 50,
+  },
+  contentDesktop: {
+    maxWidth: 400,
+    alignSelf: "center",
+    padding: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    backgroundColor: "#fafafa",
   },
   logoContainer: {
     alignItems: "center",

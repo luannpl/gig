@@ -11,10 +11,15 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
   TouchableOpacity,
   StatusBar,
+  useWindowDimensions,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
+
+// Largura máxima para telas largas (desktop)
+const MAX_WIDTH = 1200;
 
 // Tipagem para o perfil do usuário logado
 type Profile = {
@@ -44,6 +49,8 @@ type ActiveTab =
 
 const AdminContractScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>("Painel");
+  const { width } = useWindowDimensions();
+  const isMobile = width < 600;
 
   // Busca os dados do perfil do usuário logado
   const { data: me, isLoading: isLoadingProfile } = useQuery<Profile>({
@@ -137,105 +144,132 @@ const AdminContractScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#f2f2f2" />
+      <View style={styles.pageContainer}>
+        {/* Header */}
+        <View style={styles.headerContainer}>
+          <Text style={styles.logoText}>gig</Text>
+          <Text style={styles.headerTitle}>Contratos</Text>
+        </View>
 
-      {/* Header */}
-      <View style={styles.headerContainer}>
-        <Text style={styles.logoText}>gig</Text>
-        <Text style={styles.headerTitle}>Contratos</Text>
+        {/* Abas de Navegação */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "Painel" && styles.activeTab]}
+            onPress={() => setActiveTab("Painel")}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "Painel" && styles.activeTabText,
+              ]}
+            >
+              Painel
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "Pendentes" && styles.activeTab]}
+            onPress={() => setActiveTab("Pendentes")}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "Pendentes" && styles.activeTabText,
+              ]}
+            >
+              Pendentes
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "Aceitos" && styles.activeTab]}
+            onPress={() => setActiveTab("Aceitos")}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "Aceitos" && styles.activeTabText,
+              ]}
+            >
+              Aceitos
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "Recusados" && styles.activeTab]}
+            onPress={() => setActiveTab("Recusados")}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "Recusados" && styles.activeTabText,
+              ]}
+            >
+              Recusados
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === "Cancelados" && styles.activeTab]}
+            onPress={() => setActiveTab("Cancelados")}
+          >
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "Cancelados" && styles.activeTabText,
+              ]}
+            >
+              Cancelados
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Conteúdo: Painel (Dashboard) ou Lista */}
+        {activeTab === "Painel" ? (
+          <View style={styles.contentWrapper}>
+            <ContractsDashboard allContracts={contracts} />
+          </View>
+        ) : isMobile ? (
+          <ScrollView contentContainerStyle={styles.scrollViewContent}>
+            {getFilteredContracts().map((contract) => (
+              <ContractCard
+                key={contract.id}
+                contract={contract}
+                profileId={userInfo.id}
+                userType={userInfo.type}
+              />
+            ))}
+            {getFilteredContracts().length === 0 && (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>
+                  Nenhum contrato {activeTab.toLowerCase()} encontrado.
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+        ) : (
+          <FlatList
+            data={getFilteredContracts()}
+            keyExtractor={(item) => item.id}
+            numColumns={3}
+            columnWrapperStyle={styles.gridRow}
+            contentContainerStyle={styles.gridContent}
+            renderItem={({ item }) => (
+              <View style={styles.cardWrapDesktop}>
+                <ContractCard
+                  contract={item}
+                  profileId={userInfo.id}
+                  userType={userInfo.type}
+                />
+              </View>
+            )}
+            ListEmptyComponent={() => (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>
+                  Nenhum contrato {activeTab.toLowerCase()} encontrado.
+                </Text>
+              </View>
+            )}
+          />
+        )}
       </View>
-
-      {/* Abas de Navegação */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "Painel" && styles.activeTab]}
-          onPress={() => setActiveTab("Painel")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "Painel" && styles.activeTabText,
-            ]}
-          >
-            Painel
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "Pendentes" && styles.activeTab]}
-          onPress={() => setActiveTab("Pendentes")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "Pendentes" && styles.activeTabText,
-            ]}
-          >
-            Pendentes
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "Aceitos" && styles.activeTab]}
-          onPress={() => setActiveTab("Aceitos")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "Aceitos" && styles.activeTabText,
-            ]}
-          >
-            Aceitos
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "Recusados" && styles.activeTab]}
-          onPress={() => setActiveTab("Recusados")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "Recusados" && styles.activeTabText,
-            ]}
-          >
-            Recusados
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "Cancelados" && styles.activeTab]}
-          onPress={() => setActiveTab("Cancelados")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "Cancelados" && styles.activeTabText,
-            ]}
-          >
-            Cancelados
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Conteúdo: Painel (Dashboard) ou Lista */}
-      {activeTab === "Painel" ? (
-        <ContractsDashboard allContracts={contracts} />
-      ) : (
-        <ScrollView contentContainerStyle={styles.scrollViewContent}>
-          {getFilteredContracts().map((contract) => (
-            <ContractCard
-              key={contract.id}
-              contract={contract}
-              profileId={userInfo.id}
-              userType={userInfo.type}
-            />
-          ))}
-          {getFilteredContracts().length === 0 && (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>
-                Nenhum contrato {activeTab.toLowerCase()} encontrado.
-              </Text>
-            </View>
-          )}
-        </ScrollView>
-      )}
     </SafeAreaView>
   );
 };
@@ -250,6 +284,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 20,
     marginBottom: 10,
+  },
+  pageContainer: {
+    flex: 1,
+    width: "100%",
+    maxWidth: MAX_WIDTH,
+    alignSelf: "center",
+    paddingHorizontal: 12,
+  },
+  contentWrapper: {
+    flex: 1,
+    width: "100%",
+    maxWidth: MAX_WIDTH,
+    alignSelf: "center",
   },
   logoText: {
     fontSize: 28,
@@ -271,6 +318,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "#ddd",
+    width: "100%",
+    maxWidth: MAX_WIDTH,
+    alignSelf: "center",
   },
   tab: {
     flex: 1,
@@ -292,6 +342,23 @@ const styles = StyleSheet.create({
   },
   scrollViewContent: {
     paddingBottom: 20,
+  },
+  gridContent: {
+    paddingHorizontal: 12,
+    paddingBottom: 20,
+    width: "100%",
+    maxWidth: MAX_WIDTH,
+    alignSelf: "center",
+  },
+  gridRow: {
+    justifyContent: "flex-start",
+    paddingHorizontal: 6,
+    marginBottom: 8,
+  },
+  cardWrapDesktop: {
+    width: "33.3333%",
+    paddingHorizontal: 6,
+    marginBottom: 12,
   },
   emptyContainer: {
     flex: 1,

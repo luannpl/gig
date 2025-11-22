@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  useWindowDimensions,
 } from "react-native";
 import { Link, router } from "expo-router";
 import { Picker } from "@react-native-picker/picker";
@@ -39,6 +40,7 @@ const genres = [
 ];
 
 export default function BandSignUp() {
+  const { width } = useWindowDimensions();
   const [formData, setFormData] = useState<BandSignUpData>({
     name: "",
     genre: "",
@@ -100,8 +102,14 @@ export default function BandSignUp() {
         <ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollViewContent}
         >
-          <View style={styles.content}>
+          <View
+            style={[
+              styles.content,
+              width > 768 && styles.contentDesktop,
+            ]}
+          >
             {/* Logo */}
             <View style={styles.logoContainer}>
               <View style={styles.logoBox}>
@@ -248,6 +256,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     paddingTop: 50,
     paddingBottom: 30,
+  },
+  contentDesktop: {
+    maxWidth: 500,
+    alignSelf: "center",
+    padding: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    backgroundColor: "#fafafa",
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    justifyContent: "center",
   },
   logoContainer: {
     alignItems: "center",
