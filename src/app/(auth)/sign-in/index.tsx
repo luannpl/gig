@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -17,6 +16,7 @@ import { Link, router } from "expo-router";
 import { LoginData } from "@/src/types/auth";
 import { useMutation } from "@tanstack/react-query";
 import { authSignIn } from "@/src/services/auth";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SignIn() {
   const { width } = useWindowDimensions();
@@ -51,80 +51,77 @@ export default function SignIn() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView contentContainerStyle={styles.scrollViewContent}>
-          <View
-            style={[
-              styles.content,
-              width > 768 && styles.contentDesktop,
-            ]}
-          >
+          <View style={[styles.content, width > 768 && styles.contentDesktop]}>
             {/* Logo Container */}
             <View style={styles.logoContainer}>
               <View style={styles.logoBox}>
-              <Text style={styles.logoText}>gig</Text>
+                <Text style={styles.logoText}>gig</Text>
+              </View>
+            </View>
+
+            {/* Login Title */}
+            <Text style={styles.title}>login</Text>
+
+            {/* Input Fields */}
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="Digite seu email"
+                placeholderTextColor="#999"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+              />
+
+              <TextInput
+                style={styles.input}
+                placeholder="Digite sua senha"
+                placeholderTextColor="#999"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                autoComplete="password"
+              />
+            </View>
+
+            {/* Login Button */}
+            <TouchableOpacity
+              style={[
+                styles.loginButton,
+                isPending && styles.loginButtonDisabled,
+              ]}
+              onPress={handleLogin}
+              disabled={isPending}
+            >
+              <Text style={styles.loginButtonText}>
+                {isPending ? "Entrando..." : "Entrar"}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Forgot Password Link */}
+            <View style={styles.forgotPassword}>
+              <Link href="/(auth)/forgot-password" asChild>
+                <TouchableOpacity>
+                  <Text style={styles.forgotPasswordText}>
+                    Esqueceu a senha?
+                  </Text>
+                </TouchableOpacity>
+              </Link>
+            </View>
+
+            {/* Sign Up Link */}
+            <View style={styles.signupContainer}>
+              <Text style={styles.signupText}>Não tem conta? </Text>
+              <Link href="/(auth)/sign-up" asChild>
+                <TouchableOpacity>
+                  <Text style={styles.signupLink}>Cadastre-se</Text>
+                </TouchableOpacity>
+              </Link>
             </View>
           </View>
-
-          {/* Login Title */}
-          <Text style={styles.title}>login</Text>
-
-          {/* Input Fields */}
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Digite seu email"
-              placeholderTextColor="#999"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Digite sua senha"
-              placeholderTextColor="#999"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoComplete="password"
-            />
-          </View>
-
-          {/* Login Button */}
-          <TouchableOpacity
-            style={[
-              styles.loginButton,
-              isPending && styles.loginButtonDisabled,
-            ]}
-            onPress={handleLogin}
-            disabled={isPending}
-          >
-            <Text style={styles.loginButtonText}>
-              {isPending ? "Entrando..." : "Entrar"}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Forgot Password Link */}
-          <View style={styles.forgotPassword}>
-            <Link href="/(auth)/forgot-password" asChild>
-              <TouchableOpacity>
-                <Text style={styles.forgotPasswordText}>Esqueceu a senha?</Text>
-              </TouchableOpacity>
-            </Link>
-          </View>
-
-          {/* Sign Up Link */}
-          <View style={styles.signupContainer}>
-            <Text style={styles.signupText}>Não tem conta? </Text>
-            <Link href="/(auth)/sign-up" asChild>
-              <TouchableOpacity>
-                <Text style={styles.signupLink}>Cadastre-se</Text>
-              </TouchableOpacity>
-            </Link>
-          </View>
-        </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
