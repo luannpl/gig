@@ -197,6 +197,7 @@ export default function BandSignUp() {
             {/* Terms and Conditions */}
             <View style={styles.checkboxContainer}>
               <TouchableOpacity
+                testID="terms-checkbox"
                 onPress={() => setAgreeToTerms(!agreeToTerms)}
                 style={styles.checkboxTouchable}
               >

@@ -232,6 +232,7 @@ export default function VenueSignUp() {
             {/* Terms and Conditions */}
             <View style={styles.checkboxContainer}>
               <TouchableOpacity
+                testID="terms-checkbox"
                 onPress={() => setAgreeToTerms(!agreeToTerms)}
                 style={styles.checkboxTouchable}
               >
