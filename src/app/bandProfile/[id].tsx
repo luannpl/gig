@@ -305,101 +305,117 @@ export default function ProfileBand() {
           </View>
         </View>
 
-        {/* INFO */}
-        <View className="flex-row justify-between mx-4 mt-5">
-          <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
-            <Ionicons name="people" size={18} />
-            <Text className="text-sm text-gray-700 mt-1">
-              {banda.members ? `${banda.members} membros` : "Carreira Solo"}
-            </Text>
+        <View className="lg:max-w-3xl lg:mx-auto">
+          {/* INFO */}
+          <View className="flex-row justify-between mx-4 mt-5">
+            <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
+              <Ionicons name="people" size={18} />
+              <Text className="text-sm text-gray-700 mt-1">
+                {banda.members ? `${banda.members} membros` : "Carreira Solo"}
+              </Text>
+            </View>
+
+            <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
+              <Entypo name="location-pin" size={18} />
+              <Text className="text-sm text-gray-700 mt-1">{banda.city}</Text>
+            </View>
+
+            <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
+              <FontAwesome name="music" size={18} />
+              <Text className="text-sm text-gray-700 mt-1" numberOfLines={1}>
+                {banda.genre}
+              </Text>
+            </View>
           </View>
 
-          <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
-            <Entypo name="location-pin" size={18} />
-            <Text className="text-sm text-gray-700 mt-1">{banda.city}</Text>
+          <View className="lg:flex-row lg:space-x-4">
+            <View className="lg:w-1/2">
+              {/* DESCRIÇÃO */}
+              <Text className="text-base font-bold mt-6 mb-2 ml-4">
+                Descrição
+              </Text>
+              <View className="mx-4 bg-white rounded-xl p-4 border border-gray-200 shadow-md">
+                <Text className="text-sm text-gray-800 leading-5">
+                  {banda.description || "Sem descrição"}
+                </Text>
+              </View>
+
+              {/* REDES SOCIAIS */}
+              <Text className="text-base font-bold mt-6 mb-2 ml-4">
+                Redes Sociais
+              </Text>
+              <View className="mx-4 space-y-3">
+                <TouchableOpacity
+                  className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
+                  disabled={!banda.instagram}
+                  onPress={() =>
+                    banda.instagram && Linking.openURL(banda.instagram)
+                  }
+                >
+                  <FontAwesome5 name="instagram" size={22} color="#C13584" />
+                  <Text className="ml-3 text-sm text-gray-800">
+                    {banda.instagram || "Sem Instagram"}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
+                  disabled={!banda.facebook}
+                  onPress={() =>
+                    banda.facebook && Linking.openURL(banda.facebook)
+                  }
+                >
+                  <FontAwesome5 name="facebook" size={22} color="#3b5998" />
+                  <Text className="ml-3 text-sm text-gray-800">
+                    {banda.facebook || "Sem Facebook"}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
+                  disabled={!banda.twitter}
+                  onPress={() => banda.twitter && Linking.openURL(banda.twitter)}
+                >
+                  <FontAwesome5 name="twitter" size={22} color="#1DA1F2" />
+                  <Text className="ml-3 text-sm text-gray-800">
+                    {banda.twitter || "Sem Twitter"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View className="lg:w-1/2">
+              {/* AVALIAÇÕES */}
+              <View className="flex-row justify-between items-center mt-6 mb-2 mx-4">
+                <Text className="text-base font-bold">Avaliações</Text>
+                {user && !(user.role == "band") && (
+                  <TouchableOpacity
+                    className="bg-black px-4 py-2 rounded-lg"
+                    onPress={() => setModalVisible(true)}
+                  >
+                    <Text className="text-white font-semibold text-sm">
+                      Avaliar
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <View className="mx-4">
+                {avaliacoes.length > 0 ? (
+                  <FlatList
+                    data={avaliacoes}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={renderAvaliacao}
+                    scrollEnabled={false}
+                  />
+                ) : (
+                  <Text className="text-sm text-gray-600">
+                    Nenhuma avaliação ainda.
+                  </Text>
+                )}
+              </View>
+            </View>
           </View>
-
-          <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
-            <FontAwesome name="music" size={18} />
-            <Text className="text-sm text-gray-700 mt-1" numberOfLines={1}>
-              {banda.genre}
-            </Text>
-          </View>
-        </View>
-
-        {/* DESCRIÇÃO */}
-        <Text className="text-base font-bold mt-6 mb-2 ml-4">Descrição</Text>
-        <View className="mx-4 bg-white rounded-xl p-4 border border-gray-200 shadow-md">
-          <Text className="text-sm text-gray-800 leading-5">
-            {banda.description || "Sem descrição"}
-          </Text>
-        </View>
-
-        {/* REDES SOCIAIS */}
-        <Text className="text-base font-bold mt-6 mb-2 ml-4">
-          Redes Sociais
-        </Text>
-        <View className="mx-4 space-y-3">
-          <TouchableOpacity
-            className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
-            disabled={!banda.instagram}
-            onPress={() => banda.instagram && Linking.openURL(banda.instagram)}
-          >
-            <FontAwesome5 name="instagram" size={22} color="#C13584" />
-            <Text className="ml-3 text-sm text-gray-800">
-              {banda.instagram || "Sem Instagram"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
-            disabled={!banda.facebook}
-            onPress={() => banda.facebook && Linking.openURL(banda.facebook)}
-          >
-            <FontAwesome5 name="facebook" size={22} color="#3b5998" />
-            <Text className="ml-3 text-sm text-gray-800">
-              {banda.facebook || "Sem Facebook"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
-            disabled={!banda.twitter}
-            onPress={() => banda.twitter && Linking.openURL(banda.twitter)}
-          >
-            <FontAwesome5 name="twitter" size={22} color="#1DA1F2" />
-            <Text className="ml-3 text-sm text-gray-800">
-              {banda.twitter || "Sem Twitter"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* AVALIAÇÕES */}
-        <View className="flex-row justify-between items-center mt-6 mb-2 mx-4">
-          <Text className="text-base font-bold">Avaliações</Text>
-          {user && !(user.role == "band") && (
-            <TouchableOpacity
-              className="bg-black px-4 py-2 rounded-lg"
-              onPress={() => setModalVisible(true)}
-            >
-              <Text className="text-white font-semibold text-sm">Avaliar</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View className="mx-4">
-          {avaliacoes.length > 0 ? (
-            <FlatList
-              data={avaliacoes}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={renderAvaliacao}
-              scrollEnabled={false}
-            />
-          ) : (
-            <Text className="text-sm text-gray-600">
-              Nenhuma avaliação ainda.
-            </Text>
-          )}
         </View>
 
         <View className="h-10" />

@@ -149,88 +149,102 @@ export default function VenueProfile() {
           </View>
         </View>
 
-        {/* INFO */}
-        <View className="flex-row justify-between mx-4 mt-5">
-          <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
-            <Ionicons name="business" size={18} />
-            <Text className="text-sm text-gray-700 mt-1">{venue.type}</Text>
-          </View>
-
-          <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
-            <Entypo name="location-pin" size={18} />
-            <Text className="text-sm text-gray-700 mt-1">{venue.city}</Text>
-          </View>
-
-          {venue.contact && (
+        <View className="lg:max-w-3xl lg:mx-auto">
+          {/* INFO */}
+          <View className="flex-row justify-between mx-4 mt-5">
             <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
-              <Ionicons name="call" size={18} />
-              <Text className="text-sm text-gray-700 mt-1" numberOfLines={1}>
-                Contato
-              </Text>
+              <Ionicons name="business" size={18} />
+              <Text className="text-sm text-gray-700 mt-1">{venue.type}</Text>
             </View>
-          )}
-        </View>
 
-        {/* DESCRIÇÃO */}
-        <Text className="text-base font-bold mt-6 mb-2 ml-4">Descrição</Text>
-        <View className="mx-4 bg-white rounded-xl p-4 border border-gray-200 shadow-md">
-          <Text className="text-sm text-gray-800 leading-5">
-            {venue.description || "Sem descrição"}
-          </Text>
-        </View>
+            <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
+              <Entypo name="location-pin" size={18} />
+              <Text className="text-sm text-gray-700 mt-1">{venue.city}</Text>
+            </View>
 
-        {/* ENDEREÇO */}
-        {venue.address && (
-          <>
-            <Text className="text-base font-bold mt-6 mb-2 ml-4">Endereço</Text>
-            <View className="mx-4 bg-white rounded-xl p-4 border border-gray-200 shadow-md">
-              <View className="flex-row items-start">
-                <Entypo name="location-pin" size={20} color="#3b82f6" />
-                <Text className="ml-2 text-sm text-gray-800 leading-5 flex-1">
-                  {venue.address}
+            {venue.contact && (
+              <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
+                <Ionicons name="call" size={18} />
+                <Text className="text-sm text-gray-700 mt-1" numberOfLines={1}>
+                  Contato
                 </Text>
               </View>
+            )}
+          </View>
+          <View className="lg:flex-row lg:space-x-4">
+            <View className="lg:w-1/2">
+              {/* DESCRIÇÃO */}
+              <Text className="text-base font-bold mt-6 mb-2 ml-4">
+                Descrição
+              </Text>
+              <View className="mx-4 bg-white rounded-xl p-4 border border-gray-200 shadow-md">
+                <Text className="text-sm text-gray-800 leading-5">
+                  {venue.description || "Sem descrição"}
+                </Text>
+              </View>
+
+              {/* ENDEREÇO */}
+              {venue.address && (
+                <>
+                  <Text className="text-base font-bold mt-6 mb-2 ml-4">
+                    Endereço
+                  </Text>
+                  <View className="mx-4 bg-white rounded-xl p-4 border border-gray-200 shadow-md">
+                    <View className="flex-row items-start">
+                      <Entypo name="location-pin" size={20} color="#3b82f6" />
+                      <Text className="ml-2 text-sm text-gray-800 leading-5 flex-1">
+                        {venue.address}
+                      </Text>
+                    </View>
+                  </View>
+                </>
+              )}
             </View>
-          </>
-        )}
+            <View className="lg:w-1/2">
+              {/* REDES SOCIAIS */}
+              <Text className="text-base font-bold mt-6 mb-2 ml-4">
+                Redes Sociais
+              </Text>
+              <View className="mx-4 space-y-3">
+                <TouchableOpacity
+                  className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
+                  disabled={!venue.instagram}
+                  onPress={() =>
+                    venue.instagram && Linking.openURL(venue.instagram)
+                  }
+                >
+                  <FontAwesome5 name="instagram" size={22} color="#C13584" />
+                  <Text className="ml-3 text-sm text-gray-800">
+                    {venue.instagram || "Sem Instagram"}
+                  </Text>
+                </TouchableOpacity>
 
-        {/* REDES SOCIAIS */}
-        <Text className="text-base font-bold mt-6 mb-2 ml-4">
-          Redes Sociais
-        </Text>
-        <View className="mx-4 space-y-3">
-          <TouchableOpacity
-            className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
-            disabled={!venue.instagram}
-            onPress={() => venue.instagram && Linking.openURL(venue.instagram)}
-          >
-            <FontAwesome5 name="instagram" size={22} color="#C13584" />
-            <Text className="ml-3 text-sm text-gray-800">
-              {venue.instagram || "Sem Instagram"}
-            </Text>
-          </TouchableOpacity>
+                <TouchableOpacity
+                  className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
+                  disabled={!venue.facebook}
+                  onPress={() =>
+                    venue.facebook && Linking.openURL(venue.facebook)
+                  }
+                >
+                  <FontAwesome5 name="facebook" size={22} color="#3b5998" />
+                  <Text className="ml-3 text-sm text-gray-800">
+                    {venue.facebook || "Sem Facebook"}
+                  </Text>
+                </TouchableOpacity>
 
-          <TouchableOpacity
-            className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
-            disabled={!venue.facebook}
-            onPress={() => venue.facebook && Linking.openURL(venue.facebook)}
-          >
-            <FontAwesome5 name="facebook" size={22} color="#3b5998" />
-            <Text className="ml-3 text-sm text-gray-800">
-              {venue.facebook || "Sem Facebook"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
-            disabled={!venue.twitter}
-            onPress={() => venue.twitter && Linking.openURL(venue.twitter)}
-          >
-            <FontAwesome5 name="twitter" size={22} color="#1DA1F2" />
-            <Text className="ml-3 text-sm text-gray-800">
-              {venue.twitter || "Sem Twitter"}
-            </Text>
-          </TouchableOpacity>
+                <TouchableOpacity
+                  className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
+                  disabled={!venue.twitter}
+                  onPress={() => venue.twitter && Linking.openURL(venue.twitter)}
+                >
+                  <FontAwesome5 name="twitter" size={22} color="#1DA1F2" />
+                  <Text className="ml-3 text-sm text-gray-800">
+                    {venue.twitter || "Sem Twitter"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         </View>
 
         <View className="h-10" />
