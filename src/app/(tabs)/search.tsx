@@ -18,7 +18,6 @@ import { getMe } from "@/src/services/auth";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-
 // Tipos
 // Tipos
 interface Band {
@@ -27,6 +26,7 @@ interface Band {
   genre: string;
   city: string;
   profilePicture?: string;
+  coverPicture?: string;
   description?: string;
   type: "band";
 }
@@ -37,6 +37,7 @@ interface Venue {
   type: string;
   city: string;
   profilePhoto?: string;
+  coverPhoto?: string;
   description?: string;
   itemType: "venue";
 }
@@ -58,7 +59,6 @@ interface User {
   };
 }
 
-
 type SearchItem = Band | Venue;
 
 interface SearchResponse {
@@ -67,11 +67,9 @@ interface SearchResponse {
   total: number;
 }
 
-
 // Constantes para breakpoints
 const BREAKPOINT_TABLET = 768;
 const BREAKPOINT_DESKTOP = 1024;
-
 
 export default function Search() {
   const [search, setSearch] = useState("");
@@ -120,12 +118,10 @@ export default function Search() {
     return () => clearTimeout(timer);
   };
 
-
   // Lógica de responsividade
   const { width } = useWindowDimensions();
   const isTablet = width >= BREAKPOINT_TABLET;
   const isDesktop = width >= BREAKPOINT_DESKTOP;
-
 
   // Query combinada
   const { data, isLoading, isError, error } = useQuery<SearchResponse>({
@@ -150,9 +146,10 @@ export default function Search() {
 
           // Filtrar a banda do usuário logado - VERIFICAÇÃO MAIS SEGURA
           if (currentUser?.role === "band" && currentUser.band?.bandName) {
-            bands = bands.filter(band =>
-              band.id !== parseInt(currentUser.id) &&
-              band.bandName !== currentUser.band?.bandName
+            bands = bands.filter(
+              (band) =>
+                band.id !== parseInt(currentUser.id) &&
+                band.bandName !== currentUser.band?.bandName
             );
           }
         } catch (error) {
@@ -174,9 +171,10 @@ export default function Search() {
 
           // Filtrar o estabelecimento do usuário logado - VERIFICAÇÃO MAIS SEGURA
           if (currentUser?.role === "venue" && currentUser.venue?.name) {
-            venues = venues.filter(venue =>
-              venue.id !== currentUser.id &&
-              venue.name !== currentUser.venue?.name
+            venues = venues.filter(
+              (venue) =>
+                venue.id !== currentUser.id &&
+                venue.name !== currentUser.venue?.name
             );
           }
         } catch (error) {
@@ -192,7 +190,6 @@ export default function Search() {
     },
     enabled: true,
   });
-
 
   // 2. FILTRAGEM DOS RESULTADOS COM BASE NO USUÁRIO LOGADO
   const combinedResults: SearchItem[] = useMemo(() => {
@@ -220,7 +217,7 @@ export default function Search() {
       return results; // Usuário logado, mas não é Venue nem Band (ou dados incompletos)
     }
 
-    return results.filter(item => {
+    return results.filter((item) => {
       if ("bandName" in item) {
         // Se for Banda, o ID é numérico
         return item.id !== loggedEntityId;
@@ -229,16 +226,13 @@ export default function Search() {
         return item.id !== loggedEntityId;
       }
     });
-
   }, [data, currentUser]); // Recalcula quando os dados da busca OU o usuário logado mudarem
-
 
   // O estado de carregamento é se a busca principal está carregando OU se ainda estamos esperando o ID do usuário
   const totalLoading = isLoading || isLoadingUser;
 
   // Determina o número de colunas para a FlatList
   const numColumns = isDesktop ? 3 : isTablet ? 2 : 1;
-
 
   const renderItem = ({ item }: { item: SearchItem }) => {
     const isBand = "bandName" in item;
@@ -258,18 +252,33 @@ export default function Search() {
         <TouchableOpacity
           onPress={() => router.push(`/bandProfile/${item.id}`)}
           activeOpacity={0.9}
-          style={cardStyle} // Aplica o estilo do cartão aqui
+          style={cardStyle}
         >
           <View>
-            <Image
-              source={{
-                uri:
-                  item.profilePicture ||
-                  "https://via.placeholder.com/400x200?text=Sem+Foto",
-              }}
-              style={styles.image}
-              resizeMode="cover"
-            />
+            {/* Cover Image */}
+            <View style={styles.coverContainer}>
+              <Image
+                source={{
+                  uri:
+                    item.coverPicture ||
+                    "https://via.placeholder.com/400x120?text=Sem+Capa",
+                }}
+                style={styles.coverImage}
+                resizeMode="cover"
+              />
+              {/* Profile Image */}
+              <View style={styles.profileImageContainer}>
+                <Image
+                  source={{
+                    uri:
+                      item.profilePicture ||
+                      "https://via.placeholder.com/60x60?text=Foto",
+                  }}
+                  style={styles.profileImage}
+                  resizeMode="cover"
+                />
+              </View>
+            </View>
             <View style={styles.info}>
               <View style={styles.badge}>
                 <Ionicons name="musical-notes" size={12} color="#FFFFFF" />
@@ -299,18 +308,33 @@ export default function Search() {
         <TouchableOpacity
           onPress={() => router.push(`/venueProfile/${venue.id}`)}
           activeOpacity={0.9}
-          style={cardStyle} // Aplica o estilo do cartão aqui
+          style={cardStyle}
         >
           <View>
-            <Image
-              source={{
-                uri:
-                  venue.profilePhoto ||
-                  "https://via.placeholder.com/400x200?text=Sem+Foto",
-              }}
-              style={styles.image}
-              resizeMode="cover"
-            />
+            {/* Cover Image */}
+            <View style={styles.coverContainer}>
+              <Image
+                source={{
+                  uri:
+                    venue.coverPhoto ||
+                    "https://via.placeholder.com/400x120?text=Sem+Capa",
+                }}
+                style={styles.coverImage}
+                resizeMode="cover"
+              />
+              {/* Profile Image */}
+              <View style={styles.profileImageContainer}>
+                <Image
+                  source={{
+                    uri:
+                      venue.profilePhoto ||
+                      "https://via.placeholder.com/60x60?text=Foto",
+                  }}
+                  style={styles.profileImage}
+                  resizeMode="cover"
+                />
+              </View>
+            </View>
             <View style={styles.info}>
               <View style={[styles.badge, { backgroundColor: "#3b82f6" }]}>
                 <Ionicons name="business" size={12} color="#FFFFFF" />
@@ -337,7 +361,6 @@ export default function Search() {
     }
   };
 
-
   const renderEmptyState = () => {
     if (totalLoading) return null; // Usa totalLoading aqui
 
@@ -357,7 +380,6 @@ export default function Search() {
       </View>
     );
   };
-
 
   return (
     <View style={styles.container}>
@@ -471,36 +493,42 @@ export default function Search() {
       )}
 
       {/* Lista */}
-      {!totalLoading && !isError && ( // Usa totalLoading aqui
-        <FlatList
-          data={combinedResults}
-          keyExtractor={(item, index) =>
-            "bandName" in item ? `band-${item.id}` : `venue-${item.id}`
-          }
-          renderItem={renderItem}
-          contentContainerStyle={[
-            styles.listContent,
-            isTablet && styles.listContentTablet, // Estilo para layout de colunas
-          ]}
-          numColumns={numColumns} // Adiciona o número de colunas
-          columnWrapperStyle={isTablet ? styles.columnWrapper : undefined} // Estilo para espaçamento entre colunas
-          ListEmptyComponent={renderEmptyState}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+      {!totalLoading &&
+        !isError && ( // Usa totalLoading aqui
+          <FlatList
+            key={`search-list-${numColumns}`}
+            data={combinedResults}
+            keyExtractor={(item, index) =>
+              "bandName" in item ? `band-${item.id}` : `venue-${item.id}`
+            }
+            renderItem={renderItem}
+            contentContainerStyle={[
+              styles.listContent,
+              isTablet && styles.listContentTablet, // Estilo para layout de colunas
+            ]}
+            numColumns={numColumns} // Adiciona o número de colunas
+            columnWrapperStyle={
+              numColumns > 1 ? styles.columnWrapper : undefined
+            } // Estilo para espaçamento entre colunas
+            ListEmptyComponent={renderEmptyState}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
 
       {/* Info de resultados */}
-      {!totalLoading && !isError && combinedResults.length > 0 && ( // Usa combinedResults.length
-        <View style={styles.resultsInfo}>
-          <Text style={styles.resultsText}>
-            {combinedResults.length} {combinedResults.length === 1 ? "resultado" : "resultados"}
-          </Text>
-        </View>
-      )}
+      {!totalLoading &&
+        !isError &&
+        combinedResults.length > 0 && ( // Usa combinedResults.length
+          <View style={styles.resultsInfo}>
+            <Text style={styles.resultsText}>
+              {combinedResults.length}{" "}
+              {combinedResults.length === 1 ? "resultado" : "resultados"}
+            </Text>
+          </View>
+        )}
     </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
@@ -588,15 +616,38 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
-    flex: 1, // Adiciona flex: 1 para funcionar com numColumns
+    flex: 1,
   },
-  image: {
+  coverContainer: {
+    position: "relative",
     width: "100%",
-    height: 180,
+    height: 120,
+  },
+  coverImage: {
+    width: "100%",
+    height: "100%",
     backgroundColor: "#374151",
   },
+  profileImageContainer: {
+    position: "absolute",
+    bottom: -30,
+    left: 16,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 3,
+    borderColor: "#111827",
+    overflow: "hidden",
+    backgroundColor: "#374151",
+  },
+  profileImage: {
+    width: "100%",
+    height: "100%",
+  },
   info: {
-    padding: 16,
+    paddingTop: 40,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   badge: {
     flexDirection: "row",

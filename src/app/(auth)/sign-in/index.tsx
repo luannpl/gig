@@ -10,6 +10,7 @@ import {
   Platform,
   useWindowDimensions,
   ScrollView,
+  Image,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Link, router } from "expo-router";
@@ -54,9 +55,11 @@ export default function SignIn() {
           <View style={[styles.content, width > 768 && styles.contentDesktop]}>
             {/* Logo Container */}
             <View style={styles.logoContainer}>
-              <View style={styles.logoBox}>
-                <Text style={styles.logoText}>gig</Text>
-              </View>
+              <Image
+                source={require("@/src/assets/images/logo.svg")}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
 
             {/* Login Title */}
@@ -155,23 +158,11 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: "center",
-    marginBottom: 60,
+    marginBottom: 48,
   },
-  logoBox: {
-    width: 120,
-    height: 80,
-    borderWidth: 2,
-    borderColor: "#e0e0e0",
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#fafafa",
-  },
-  logoText: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#000",
-    fontStyle: "italic",
+  logoImage: {
+    width: 200,
+    height: 200,
   },
   title: {
     fontSize: 32,

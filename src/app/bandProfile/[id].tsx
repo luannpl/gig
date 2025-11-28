@@ -243,14 +243,21 @@ export default function ProfileBand() {
         contentContainerStyle={{ paddingBottom: 40 }}
       >
         {/* CAPA */}
-        <View className="w-full h-44 justify-center items-center bg-gray-300 overflow-hidden">
+        <View
+          style={{
+            width: "100%",
+            height: 176,
+            backgroundColor: "#d1d5db",
+            overflow: "hidden",
+          }}
+        >
           <Image
             source={
               banda.coverPicture
                 ? getImageSource(banda.coverPicture)
                 : require("./../../assets/images/icon.png")
             }
-            className="w-full h-28 bg-gray-300 rounded-b-2xl"
+            style={{ width: "100%", height: "100%" }}
             resizeMode="cover"
           />
 

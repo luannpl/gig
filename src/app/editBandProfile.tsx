@@ -9,6 +9,7 @@ import {
   Alert,
   Image,
   Dimensions,
+  Platform,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -19,103 +20,92 @@ import { getMe } from "../services/auth";
 
 const { width } = Dimensions.get("window");
 
+// Helper to create file object for FormData
+const createFileObject = (uri: string) => {
+  const filename = uri.split("/").pop() || `image_${Date.now()}.jpg`;
+  const match = /\.(\w+)$/.exec(filename);
+  const type = match ? `image/${match[1]}` : "image/jpeg";
+
+  return {
+    uri,
+    name: filename,
+    type,
+  } as any;
+};
+
+// Helper to convert blob URI to File (for web)
+const blobToFile = async (blobUri: string, filename: string): Promise<File> => {
+  const response = await fetch(blobUri);
+  const blob = await response.blob();
+  return new File([blob], filename, { type: blob.type || "image/jpeg" });
+};
+
 export default function EditBandProfile() {
   const router = useRouter();
-  const [bandId, setBandId] = useState<number | null>(null);
+  const [userId, setUserId] = useState<number | null>(null);
   const [bandName, setBandName] = useState("");
   const [genre, setGenre] = useState("");
   const [city, setCity] = useState("");
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [bandPhotos, setBandPhotos] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
 
-  // useEffect(() => {
-  //   async function getBandId() {
-  //     try {
-  //       const token = await AsyncStorage.getItem("token");
-  //       if (!token) {
-  //         Alert.alert("Erro", "Token não encontrado. Faça login novamente.");
-  //         AsyncStorage.removeItem("user");
-  //         AsyncStorage.removeItem("token");
-  //         router.replace("/(auth)/sign-in");
-  //         return;
-  //       }
-  //       const storedBand = await getMe(token);
-  //       if (storedBand) {
-  //         const parsed = JSON.parse(storedBand);
-  //         setBandId(parsed.band.id);
-  //       } else {
-  //         Alert.alert(
-  //           "Erro",
-  //           "ID da banda não encontrado. Faça login novamente."
-  //         );
-  //       }
-  //     } catch (error) {
-  //       console.log("Erro ao obter ID:", error);
-  //     }
-  //   }
-  //   getBandId();
-  // }, []);
+  // Track if images were changed (new local files)
+  const [coverImageChanged, setCoverImageChanged] = useState(false);
+  const [profileImageChanged, setProfileImageChanged] = useState(false);
 
   useEffect(() => {
     async function fetchBand() {
+      setLoadingData(true);
       const user = await getMe((await AsyncStorage.getItem("token")) || "");
-      const bandId = user.band?.id;
-      setBandId(bandId || null);
-      if (!bandId) return;
-      console.log("Buscando dados da banda com ID:", bandId);
+      const id = user?.id;
+      setUserId(id || null);
+      if (!id || !user.band) {
+        setLoadingData(false);
+        return;
+      }
+      console.log("Buscando dados da banda do usuário:", id);
       try {
-        const response = await api.get(`/bands/${bandId}`);
+        const response = await api.get(`/bands/user/${user.id}`);
         const data = response.data;
         setBandName(data.bandName || "");
         setGenre(data.genre || "");
         setCity(data.city || "");
-        setCoverImage(data.coverImage || null);
-        setProfileImage(data.profileImage || null);
-        setBandPhotos(data.bandPhotos || []);
+        setCoverImage(data.coverPicture || null);
+        setProfileImage(data.profilePicture || null);
       } catch (error) {
         console.log("Erro ao buscar banda:", error);
         Alert.alert("Erro", "Não foi possível carregar os dados da banda.");
+      } finally {
+        setLoadingData(false);
       }
     }
     fetchBand();
   }, []);
 
-  const pickImage = async (type: "cover" | "profile" | "gallery") => {
+  const pickImage = async (type: "cover" | "profile") => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
-      allowsMultipleSelection: type === "gallery",
     });
 
     if (!result.canceled) {
       if (type === "cover") {
         setCoverImage(result.assets[0].uri);
+        setCoverImageChanged(true);
       } else if (type === "profile") {
         setProfileImage(result.assets[0].uri);
-      } else if (type === "gallery") {
-        const selected = result.assets.map((asset) => asset.uri);
-        setBandPhotos((prev) => [...prev, ...selected]);
+        setProfileImageChanged(true);
       }
     }
   };
 
-  const removePhoto = (uri: string) => {
-    Alert.alert("Remover Foto", "Deseja remover esta imagem?", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Remover",
-        onPress: () => setBandPhotos((prev) => prev.filter((p) => p !== uri)),
-      },
-    ]);
-  };
-
   const handleSave = async () => {
-    if (!bandId) {
-      Alert.alert("Erro", "ID da banda não encontrado.");
+    if (!userId) {
+      Alert.alert("Erro", "ID do usuário não encontrado.");
       return;
     }
     if (!bandName || !genre || !city) {
@@ -125,15 +115,59 @@ export default function EditBandProfile() {
 
     setLoading(true);
     try {
-      await api.put(`/bands/${bandId}`, {
-        bandName,
-        genre,
-        city,
-        coverImage,
-        profileImage,
-        bandPhotos,
+      const formData = new FormData();
+
+      // Add text fields
+      formData.append("bandName", bandName);
+      formData.append("genre", genre);
+      formData.append("city", city);
+
+      // Check if running on web (blob URI) or native
+      const isWeb = Platform.OS === "web";
+
+      // Add cover image if changed (new local file)
+      if (coverImageChanged && coverImage) {
+        if (isWeb) {
+          const coverFile = await blobToFile(
+            coverImage,
+            `cover_${Date.now()}.jpg`
+          );
+          console.log("Cover file (web):", coverFile);
+          formData.append("coverPicture", coverFile);
+        } else {
+          const coverFile = createFileObject(coverImage);
+          console.log("Cover file (native):", coverFile);
+          formData.append("coverPicture", coverFile);
+        }
+      }
+
+      // Add profile image if changed (new local file)
+      if (profileImageChanged && profileImage) {
+        if (isWeb) {
+          const profileFile = await blobToFile(
+            profileImage,
+            `profile_${Date.now()}.jpg`
+          );
+          console.log("Profile file (web):", profileFile);
+          formData.append("profilePicture", profileFile);
+        } else {
+          const profileFile = createFileObject(profileImage);
+          console.log("Profile file (native):", profileFile);
+          formData.append("profilePicture", profileFile);
+        }
+      }
+
+      await api.patch(`/bands/user/${userId}`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       });
+
       Alert.alert("Sucesso", "Perfil da banda atualizado com sucesso!");
+
+      // Reset change tracking
+      setCoverImageChanged(false);
+      setProfileImageChanged(false);
     } catch (error) {
       console.log("Erro ao atualizar banda:", error);
       Alert.alert("Erro", "Não foi possível atualizar o perfil da banda");
@@ -141,6 +175,58 @@ export default function EditBandProfile() {
       setLoading(false);
     }
   };
+
+  // Skeleton component
+  const Skeleton = ({ style }: { style: any }) => (
+    <View style={[style, styles.skeleton]} />
+  );
+
+  if (loadingData) {
+    return (
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color="#000" />
+          </TouchableOpacity>
+          <View style={styles.headerTitle}>
+            <Ionicons name="musical-notes" size={24} color="#9333ea" />
+            <Text style={styles.title}>Editar Perfil da Banda</Text>
+          </View>
+        </View>
+
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Cover Image Skeleton */}
+          <View style={styles.coverSection}>
+            <Skeleton style={styles.coverContainer} />
+            <View style={styles.profileContainer}>
+              <Skeleton style={styles.profileWrapperSkeleton} />
+            </View>
+          </View>
+
+          {/* Form Card Skeleton */}
+          <View style={styles.formCard}>
+            <View style={styles.section}>
+              <Skeleton style={styles.labelSkeleton} />
+              <Skeleton style={styles.inputSkeleton} />
+            </View>
+            <View style={styles.section}>
+              <Skeleton style={styles.labelSkeleton} />
+              <Skeleton style={styles.inputSkeleton} />
+            </View>
+            <View style={styles.section}>
+              <Skeleton style={styles.labelSkeleton} />
+              <Skeleton style={styles.inputSkeleton} />
+            </View>
+            <Skeleton style={styles.buttonSkeleton} />
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -206,38 +292,6 @@ export default function EditBandProfile() {
 
         {/* Form Card */}
         <View style={styles.formCard}>
-          {/* Band Photos Gallery */}
-          <View style={styles.section}>
-            <View style={styles.labelContainer}>
-              <Text style={styles.photoEmoji}>📸</Text>
-              <Text style={styles.label}>Fotos da Banda</Text>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {bandPhotos.map((photo, index) => (
-                <TouchableOpacity
-                  key={index}
-                  onLongPress={() => removePhoto(photo)}
-                  activeOpacity={0.8}
-                  style={styles.photoWrapper}
-                >
-                  <Image source={{ uri: photo }} style={styles.galleryImage} />
-                  <TouchableOpacity
-                    style={styles.removeButton}
-                    onPress={() => removePhoto(photo)}
-                  >
-                    <Ionicons name="close" size={16} color="#fff" />
-                  </TouchableOpacity>
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity
-                style={styles.addPhotoButton}
-                onPress={() => pickImage("gallery")}
-              >
-                <Ionicons name="add" size={32} color="#9ca3af" />
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-
           {/* Band Name */}
           <View style={styles.section}>
             <Text style={styles.label}>Nome da Banda</Text>
@@ -415,56 +469,11 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 24,
   },
-  labelContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  photoEmoji: {
-    fontSize: 18,
-    marginRight: 8,
-  },
   label: {
     fontSize: 14,
     fontWeight: "600",
     color: "#374151",
-  },
-  photoWrapper: {
-    marginRight: 12,
-    position: "relative",
-  },
-  galleryImage: {
-    width: 140,
-    height: 96,
-    borderRadius: 12,
-    backgroundColor: "#e5e7eb",
-  },
-  removeButton: {
-    position: "absolute",
-    top: -8,
-    right: -8,
-    backgroundColor: "#ef4444",
-    borderRadius: 12,
-    width: 24,
-    height: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  addPhotoButton: {
-    width: 140,
-    height: 96,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderStyle: "dashed",
-    borderColor: "#d1d5db",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f9fafb",
+    marginBottom: 8,
   },
   input: {
     borderWidth: 1,
@@ -495,5 +504,35 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "700",
+  },
+  // Skeleton styles
+  skeleton: {
+    backgroundColor: "#e5e7eb",
+    overflow: "hidden",
+  },
+  profileWrapperSkeleton: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 4,
+    borderColor: "#fff",
+    backgroundColor: "#e5e7eb",
+  },
+  labelSkeleton: {
+    width: 120,
+    height: 16,
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  inputSkeleton: {
+    width: "100%",
+    height: 48,
+    borderRadius: 12,
+  },
+  buttonSkeleton: {
+    width: "100%",
+    height: 52,
+    borderRadius: 12,
+    marginTop: 8,
   },
 });

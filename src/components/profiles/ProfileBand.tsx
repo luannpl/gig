@@ -101,10 +101,9 @@ export default function ProfileBand() {
 
   //botão logout
   const handleLogout = async () => {
-  await AsyncStorage.multiRemove(["token", "user"]);
-  router.replace("/(auth)/sign-in");
-};
-
+    await AsyncStorage.multiRemove(["token", "user"]);
+    router.replace("/(auth)/sign-in");
+  };
 
   const renderAvaliacao = ({ item }: { item: any }) => (
     <View className="bg-white border border-gray-200 rounded-xl p-4 mb-3 shadow-sm">
@@ -131,14 +130,14 @@ export default function ProfileBand() {
         contentContainerStyle={{ paddingBottom: 40 }}
       >
         {/* CAPA */}
-        <View className="w-full h-44 justify-center items-center bg-gray-300 overflow-hidden">
+        <View className="w-full h-44 bg-gray-300 overflow-hidden">
           <Image
             source={
               banda.coverPicture
                 ? getImageSource(banda.coverPicture)
                 : require("./../../assets/images/icon.png")
             }
-            className="w-full h-28 bg-gray-300 rounded-b-2xl"
+            className="w-full h-full"
             resizeMode="cover"
           />
         </View>
@@ -265,13 +264,12 @@ export default function ProfileBand() {
         <View className="h-10" />
 
         {/* BOTÃO DE SAIR */}
-<TouchableOpacity
-  className="mt-6 mx-4 bg-red-500 p-3 rounded-xl items-center"
-  onPress={handleLogout}
->
-  <Text className="text-white font-bold text-base">Sair</Text>
-</TouchableOpacity>
-
+        <TouchableOpacity
+          className="mt-6 mx-4 bg-red-500 p-3 rounded-xl items-center"
+          onPress={handleLogout}
+        >
+          <Text className="text-white font-bold text-base">Sair</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
