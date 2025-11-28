@@ -99,6 +99,13 @@ export default function ProfileBand() {
     return <View className="flex-row mt-1">{stars}</View>;
   };
 
+  //botão logout
+  const handleLogout = async () => {
+  await AsyncStorage.multiRemove(["token", "user"]);
+  router.replace("/(auth)/sign-in");
+};
+
+
   const renderAvaliacao = ({ item }: { item: any }) => (
     <View className="bg-white border border-gray-200 rounded-xl p-4 mb-3 shadow-sm">
       <View className="flex-row justify-between items-center">
@@ -256,6 +263,15 @@ export default function ProfileBand() {
         </View>
 
         <View className="h-10" />
+
+        {/* BOTÃO DE SAIR */}
+<TouchableOpacity
+  className="mt-6 mx-4 bg-red-500 p-3 rounded-xl items-center"
+  onPress={handleLogout}
+>
+  <Text className="text-white font-bold text-base">Sair</Text>
+</TouchableOpacity>
+
       </ScrollView>
     </SafeAreaView>
   );
