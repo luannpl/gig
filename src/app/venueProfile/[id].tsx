@@ -12,11 +12,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import {
-  Ionicons,
-  Entypo,
-  FontAwesome5,
-} from "@expo/vector-icons";
+import { Ionicons, Entypo, FontAwesome5 } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import api from "@/src/services/api";
 
@@ -37,11 +33,11 @@ interface Venue {
 
 const normalizeImageUrl = (url: string | null | undefined) => {
   if (!url) return null;
-  if (url.startsWith('http')) return url;
-  
-  if (url.startsWith('/')) {
+  if (url.startsWith("http")) return url;
+
+  if (url.startsWith("/")) {
     const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-    if (supabaseUrl && supabaseUrl.startsWith('https://')) {
+    if (supabaseUrl && supabaseUrl.startsWith("https://")) {
       return `${supabaseUrl}/storage/v1/object/public/gig${url}`;
     }
   }
@@ -79,14 +75,18 @@ export default function VenueProfile() {
       return { uri: "https://via.placeholder.com/400x200?text=Sem+imagem" };
     }
     const normalized = normalizeImageUrl(img);
-    return { uri: normalized || "https://via.placeholder.com/400x200?text=Sem+imagem" };
+    return {
+      uri: normalized || "https://via.placeholder.com/400x200?text=Sem+imagem",
+    };
   };
 
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-white justify-center items-center">
         <ActivityIndicator size="large" color="#000" />
-        <Text className="mt-4 text-gray-600">Carregando estabelecimento...</Text>
+        <Text className="mt-4 text-gray-600">
+          Carregando estabelecimento...
+        </Text>
       </SafeAreaView>
     );
   }
@@ -116,17 +116,17 @@ export default function VenueProfile() {
         contentContainerStyle={{ paddingBottom: 40 }}
       >
         {/* CAPA */}
-        <View className="w-full h-44 justify-center items-center bg-gray-300 overflow-hidden">
+        <View className="w-full h-44 bg-gray-300 overflow-hidden">
           <Image
             source={getImageSource(venue.coverPhoto)}
-            className="w-full h-28 bg-gray-300 rounded-b-2xl"
+            className="w-full h-full"
             resizeMode="cover"
           />
 
           <TouchableOpacity
             className="absolute top-4 left-4 bg-black bg-opacity-50 p-2 rounded-full"
             activeOpacity={0.8}
-            onPress={() => router.back()}
+            onPress={() => router.push("/(tabs)/search")}
           >
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
@@ -142,9 +142,7 @@ export default function VenueProfile() {
           </View>
 
           <View className="mt-3 items-center w-full">
-            <Text className="text-lg font-bold text-center">
-              {venue.name}
-            </Text>
+            <Text className="text-lg font-bold text-center">{venue.name}</Text>
             <Text className="text-sm text-gray-600 mt-1 mb-2">
               {venue.type}
             </Text>
@@ -155,9 +153,7 @@ export default function VenueProfile() {
         <View className="flex-row justify-between mx-4 mt-5">
           <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
             <Ionicons name="business" size={18} />
-            <Text className="text-sm text-gray-700 mt-1">
-              {venue.type}
-            </Text>
+            <Text className="text-sm text-gray-700 mt-1">{venue.type}</Text>
           </View>
 
           <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
