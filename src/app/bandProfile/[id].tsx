@@ -242,160 +242,166 @@ export default function ProfileBand() {
         className="flex-1 bg-white"
         contentContainerStyle={{ paddingBottom: 40 }}
       >
-        {/* CAPA */}
-        <View className="w-full h-44 justify-center items-center bg-gray-300 overflow-hidden">
-          <Image
-            source={
-              banda.coverPicture
-                ? getImageSource(banda.coverPicture)
-                : require("./../../assets/images/icon.png")
-            }
-            className="w-full h-28 bg-gray-300 rounded-b-2xl"
-            resizeMode="cover"
-          />
-
-          <TouchableOpacity
-            className="absolute top-4 left-4 bg-black bg-opacity-50 p-2 rounded-full"
-            activeOpacity={0.8}
-            onPress={() => router.push("/(tabs)/search")}
-          >
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-        </View>
-
-        {/* HEADER */}
-        <View className="-mt-16 px-4 items-center">
-          <View className="w-28 h-28 rounded-xl overflow-hidden border-4 border-white shadow-md bg-white">
+        <View className="w-full flex-1 lg:max-w-3xl lg:self-center">
+          {/* CAPA */}
+          <View className="w-full h-44 justify-center items-center bg-gray-300 overflow-hidden">
             <Image
               source={
-                banda.profilePicture
-                  ? getImageSource(banda.profilePicture)
+                banda.coverPicture
+                  ? getImageSource(banda.coverPicture)
                   : require("./../../assets/images/icon.png")
               }
-              className="w-full h-full"
+              className="w-full h-28 bg-gray-300 rounded-b-2xl"
+              resizeMode="cover"
             />
+
+            <TouchableOpacity
+              className="absolute top-4 left-4 bg-black bg-opacity-50 p-2 rounded-full"
+              activeOpacity={0.8}
+              onPress={() => router.push("/(tabs)/search")}
+            >
+              <Ionicons name="arrow-back" size={24} color="#fff" />
+            </TouchableOpacity>
           </View>
 
-          <View className="mt-3 items-center w-full">
-            <Text className="text-lg font-bold text-center">
-              {banda.bandName}
-            </Text>
-            <Text className="text-sm text-gray-600 mt-1 mb-2">
-              {banda.genre}
-            </Text>
+          {/* HEADER */}
+          <View className="-mt-16 px-4 items-center">
+            <View className="w-28 h-28 rounded-xl overflow-hidden border-4 border-white shadow-md bg-white">
+              <Image
+                source={
+                  banda.profilePicture
+                    ? getImageSource(banda.profilePicture)
+                    : require("./../../assets/images/icon.png")
+                }
+                className="w-full h-full"
+              />
+            </View>
 
+            <View className="mt-3 items-center w-full">
+              <Text className="text-lg font-bold text-center">
+                {banda.bandName}
+              </Text>
+              <Text className="text-sm text-gray-600 mt-1 mb-2">
+                {banda.genre}
+              </Text>
+
+              {user && !(user.role == "band") && (
+                <TouchableOpacity
+                  className="border border-black px-6 py-2 rounded-lg bg-black mt-2"
+                  activeOpacity={0.8}
+                  onPress={() => setModalContratarVisible(true)}
+                >
+                  <Text className="font-semibold text-white">
+                    Contratar Banda
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* INFO */}
+          <View className="flex-row justify-between mx-4 mt-5">
+            <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
+              <Ionicons name="people" size={18} />
+              <Text className="text-sm text-gray-700 mt-1">
+                {banda.members ? `${banda.members} membros` : "Carreira Solo"}
+              </Text>
+            </View>
+
+            <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
+              <Entypo name="location-pin" size={18} />
+              <Text className="text-sm text-gray-700 mt-1">{banda.city}</Text>
+            </View>
+
+            <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
+              <FontAwesome name="music" size={18} />
+              <Text className="text-sm text-gray-700 mt-1" numberOfLines={1}>
+                {banda.genre}
+              </Text>
+            </View>
+          </View>
+
+          {/* DESCRIÇÃO */}
+          <Text className="text-base font-bold mt-6 mb-2 ml-4">Descrição</Text>
+          <View className="mx-4 bg-white rounded-xl p-4 border border-gray-200 shadow-md">
+            <Text className="text-sm text-gray-800 leading-5">
+              {banda.description || "Sem descrição"}
+            </Text>
+          </View>
+
+          {/* REDES SOCIAIS */}
+          <Text className="text-base font-bold mt-6 mb-2 ml-4">
+            Redes Sociais
+          </Text>
+          <View className="mx-4 space-y-3">
+            <TouchableOpacity
+              className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
+              disabled={!banda.instagram}
+              onPress={() =>
+                banda.instagram && Linking.openURL(banda.instagram)
+              }
+            >
+              <FontAwesome5 name="instagram" size={22} color="#C13584" />
+              <Text className="ml-3 text-sm text-gray-800">
+                {banda.instagram || "Sem Instagram"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
+              disabled={!banda.facebook}
+              onPress={() => banda.facebook && Linking.openURL(banda.facebook)}
+            >
+              <FontAwesome5 name="facebook" size={22} color="#3b5998" />
+              <Text className="ml-3 text-sm text-gray-800">
+                {banda.facebook || "Sem Facebook"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
+              disabled={!banda.twitter}
+              onPress={() => banda.twitter && Linking.openURL(banda.twitter)}
+            >
+              <FontAwesome5 name="twitter" size={22} color="#1DA1F2" />
+              <Text className="ml-3 text-sm text-gray-800">
+                {banda.twitter || "Sem Twitter"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* AVALIAÇÕES */}
+          <View className="flex-row justify-between items-center mt-6 mb-2 mx-4">
+            <Text className="text-base font-bold">Avaliações</Text>
             {user && !(user.role == "band") && (
               <TouchableOpacity
-                className="border border-black px-6 py-2 rounded-lg bg-black mt-2"
-                activeOpacity={0.8}
-                onPress={() => setModalContratarVisible(true)}
+                className="bg-black px-4 py-2 rounded-lg"
+                onPress={() => setModalVisible(true)}
               >
-                <Text className="font-semibold text-white">
-                  Contratar Banda
+                <Text className="text-white font-semibold text-sm">
+                  Avaliar
                 </Text>
               </TouchableOpacity>
             )}
           </View>
-        </View>
 
-        {/* INFO */}
-        <View className="flex-row justify-between mx-4 mt-5">
-          <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
-            <Ionicons name="people" size={18} />
-            <Text className="text-sm text-gray-700 mt-1">
-              {banda.members ? `${banda.members} membros` : "Carreira Solo"}
-            </Text>
+          <View className="mx-4">
+            {avaliacoes.length > 0 ? (
+              <FlatList
+                data={avaliacoes}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={renderAvaliacao}
+                scrollEnabled={false}
+              />
+            ) : (
+              <Text className="text-sm text-gray-600">
+                Nenhuma avaliação ainda.
+              </Text>
+            )}
           </View>
 
-          <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
-            <Entypo name="location-pin" size={18} />
-            <Text className="text-sm text-gray-700 mt-1">{banda.city}</Text>
-          </View>
-
-          <View className="flex-1 bg-white border border-gray-200 mx-1 p-3 rounded-lg items-center shadow-sm">
-            <FontAwesome name="music" size={18} />
-            <Text className="text-sm text-gray-700 mt-1" numberOfLines={1}>
-              {banda.genre}
-            </Text>
-          </View>
+          <View className="h-10" />
         </View>
-
-        {/* DESCRIÇÃO */}
-        <Text className="text-base font-bold mt-6 mb-2 ml-4">Descrição</Text>
-        <View className="mx-4 bg-white rounded-xl p-4 border border-gray-200 shadow-md">
-          <Text className="text-sm text-gray-800 leading-5">
-            {banda.description || "Sem descrição"}
-          </Text>
-        </View>
-
-        {/* REDES SOCIAIS */}
-        <Text className="text-base font-bold mt-6 mb-2 ml-4">
-          Redes Sociais
-        </Text>
-        <View className="mx-4 space-y-3">
-          <TouchableOpacity
-            className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
-            disabled={!banda.instagram}
-            onPress={() => banda.instagram && Linking.openURL(banda.instagram)}
-          >
-            <FontAwesome5 name="instagram" size={22} color="#C13584" />
-            <Text className="ml-3 text-sm text-gray-800">
-              {banda.instagram || "Sem Instagram"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
-            disabled={!banda.facebook}
-            onPress={() => banda.facebook && Linking.openURL(banda.facebook)}
-          >
-            <FontAwesome5 name="facebook" size={22} color="#3b5998" />
-            <Text className="ml-3 text-sm text-gray-800">
-              {banda.facebook || "Sem Facebook"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            className="flex-row items-center bg-white p-3 rounded-xl border border-gray-200 shadow-md"
-            disabled={!banda.twitter}
-            onPress={() => banda.twitter && Linking.openURL(banda.twitter)}
-          >
-            <FontAwesome5 name="twitter" size={22} color="#1DA1F2" />
-            <Text className="ml-3 text-sm text-gray-800">
-              {banda.twitter || "Sem Twitter"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* AVALIAÇÕES */}
-        <View className="flex-row justify-between items-center mt-6 mb-2 mx-4">
-          <Text className="text-base font-bold">Avaliações</Text>
-          {user && !(user.role == "band") && (
-            <TouchableOpacity
-              className="bg-black px-4 py-2 rounded-lg"
-              onPress={() => setModalVisible(true)}
-            >
-              <Text className="text-white font-semibold text-sm">Avaliar</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View className="mx-4">
-          {avaliacoes.length > 0 ? (
-            <FlatList
-              data={avaliacoes}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={renderAvaliacao}
-              scrollEnabled={false}
-            />
-          ) : (
-            <Text className="text-sm text-gray-600">
-              Nenhuma avaliação ainda.
-            </Text>
-          )}
-        </View>
-
-        <View className="h-10" />
       </ScrollView>
 
       {/* MODAL DE AVALIAÇÃO */}
